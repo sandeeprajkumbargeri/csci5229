@@ -1,18 +1,31 @@
 /*
- *  Coordinates
+ *  Lorenz Attractor
  *
- *  Display 2, 3 and 4 dimensional coordinates in 3D.
+ *  Adapted by: Sandeep Raj Kumbargeri
+ *  CSCI 5229 - Computer Graphics - Fall 2018
  *
- *  Key bindings:
- *  1      2D coordinates
- *  2      2D coordinates with fixed Z value
- *  3      3D coordinates
- *  4      4D coordinates
- *  +/-    Increase/decrease z or w
- *  arrows Change view angle
+ *  Originallly "Example 6 - Coordinates" written by Willem A. (Vlakkies) Schreuder
+ *  Displays Lorenz Attractor in 3D and allows user to view it by changing its variables and viewing angles
+ *
+ *  Use arrow keys to change viewing angles
+
+ *  Special Key Bindings:
+ *  1      Increase S
+ *  q      Decrease S
+ *
+ *  2      Increase B
+ *  w      Decrease B
+ *
+ *  3      Increase R
+ *  e      Decrease R
+ *
+ *  .     Increase point size
+ *  ,     Decrease point size
+ *
  *  0      Reset view angle
  *  ESC    Exit
  */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -32,6 +45,7 @@
 int th = 0;       // Azimuth of view angle
 int ph = 0;       // Elevation of view angle
 double dim = AXES_LENGTH + ORTHO_DIMNSN;   // Dimension of orthogonal box
+unsigned int pix = 5;
 
 //Lorenz attractor variables
 double s  = 10;
@@ -80,7 +94,8 @@ void display()
   glRotated(ph,1,0,0);
   glRotated(th,0,1,0);
 
-  glPointSize(5);
+  //  Set size of each point in the pixel units (default 5)
+  glPointSize(pix);
   glBegin(GL_POINTS);
 
   /*
@@ -122,7 +137,7 @@ void display()
 
   //  Display parameters
   glWindowPos2i(5, 5);
-  Print("View Angle = %d (H) and %d (V)    s = %lf    b = %lf    r = %lf", th, ph, s, b, r);
+  Print("View Angle = %d (H) and %d (V)    s = %lf    b = %lf    r = %lf     Point Size = %u", th, ph, s, b, r, pix);
 
   //  Flush and swap
   glFlush();
@@ -136,14 +151,16 @@ void key(unsigned char ch,int x,int y)
 {
   switch(ch)
   {
-    case 27:   exit(0);      break;  //  Exit the program
-    case '0':  th = ph = 0;  break;  //  Reset view angle
+    case 27:   exit(0);       break;  //  Exit the program
+    case '0':  th = ph = 0;   break;  //  Reset view angle
     case 'q':  s -= 0.01;     break;
     case '1':  s += 0.01;     break;
     case 'w':  b -= 0.01;     break;
     case '2':  b += 0.01;     break;
     case 'e':  r -= 0.01;     break;
     case '3':  r += 0.01;     break;
+    case '.':  pix += 1;      break;
+    case ',':  (pix > 1) ? (pix -= 1) : 0;   break;
   }
   //  Tell GLUT it is necessary to redisplay the scene
   glutPostRedisplay();
