@@ -27,8 +27,12 @@
 //  Globals
 int th = 0;       // Azimuth of view angle
 int ph = 0;       // Elevation of view angle
+double dim = 2;   // Dimension of orthogonal box
 
-double dim=2;   // Dimension of orthogonal box
+//Lorenz attractor variables
+double s  = 10;
+double b  = 2.6666;
+double r  = 28;
 
 /*
  *  Convenience routine to output raster text
@@ -54,44 +58,72 @@ void Print(const char* format , ...)
  */
 void display()
 {
-   //  Clear the image
-   glClear(GL_COLOR_BUFFER_BIT);
-   //  Reset previous transforms
-   glLoadIdentity();
-   //  Set view angle
-   glRotated(ph,1,0,0);
-   glRotated(th,0,1,0);
-   //  Draw 10 pixel yellow points
-   glColor3f(1,1,0);
-   glPointSize(10);
-   glBegin(GL_POINTS);
+  unsigned int i = 0;
 
-   glEnd();
-   //  Draw axes in white
-   glColor3f(1,1,1);
-   glBegin(GL_LINES);
-   glVertex3d(0,0,0);
-   glVertex3d(1,0,0);
-   glVertex3d(0,0,0);
-   glVertex3d(0,1,0);
-   glVertex3d(0,0,0);
-   glVertex3d(0,0,1);
-   glEnd();
-   //  Label axes
-   glRasterPos3d(1,0,0);
-   Print("X");
-   glRasterPos3d(0,1,0);
-   Print("Y");
-   glRasterPos3d(0,0,1);
-   Print("Z");
+  /*  Coordinates  */
+  double x = 1;
+  double y = 1;
+  double z = 1;
 
-   //  Display parameters
-   glWindowPos2i(5,5);
-   Print("View Angle=%d , %d",th,ph);
+  /*  Time step  */
+  double dt = 0.001;
 
-   //  Flush and swap
-   glFlush();
-   glutSwapBuffers();
+  //  Clear the image
+  glClear(GL_COLOR_BUFFER_BIT);
+  //  Reset previous transforms
+  glLoadIdentity();
+  //  Set view angle
+  glRotated(ph,1,0,0);
+  glRotated(th,0,1,0);
+  //  Draw 10 pixel yellow points
+  glColor3f(1,1,0);
+  glPointSize(10);
+  glBegin(GL_POINTS);
+
+  /*
+   *  Integrate 50,000 steps (50 time units with dt = 0.001)
+   *  Explicit Euler integration
+   */
+  for (i = 0; i < 50000; i++)
+  {
+     double dx = s*(y-x);
+     double dy = x*(r-z)-y;
+     double dz = x*y - b*z;
+
+     x += dt * dx;
+     y += dt * dy;
+     z += dt * dz;
+
+     glColor3ub(((int) i) % 255,((int) i) % 128, ((int) i) % 64);
+     glVertex3d(x/2,y/2,z/2);
+  }
+
+  glEnd();
+  //  Draw axes in white
+  glColor3f(1,1,1);
+  glBegin(GL_LINES);
+  glVertex3d(0,0,0);
+  glVertex3d(1,0,0);
+  glVertex3d(0,0,0);
+  glVertex3d(0,1,0);
+  glVertex3d(0,0,0);
+  glVertex3d(0,0,1);
+  glEnd();
+  //  Label axes
+  glRasterPos3d(1,0,0);
+  Print("X");
+  glRasterPos3d(0,1,0);
+  Print("Y");
+  glRasterPos3d(0,0,1);
+  Print("Z");
+
+  //  Display parameters
+  glWindowPos2i(5,5);
+  Print("View Angle=%d , %d",th,ph);
+
+  //  Flush and swap
+  glFlush();
+  glutSwapBuffers();
 }
 
 /*
