@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+
 //  OpenGL with prototypes for glext
 #define GL_GLEXT_PROTOTYPES
 #ifdef __APPLE__
@@ -24,10 +25,13 @@
 #include <GL/glut.h>
 #endif
 
+#define AXES_LENGTH   15
+#define ORTHO_DIMNSN  5
+
 //  Globals
 int th = 0;       // Azimuth of view angle
 int ph = 0;       // Elevation of view angle
-double dim = 2;   // Dimension of orthogonal box
+double dim = AXES_LENGTH + ORTHO_DIMNSN;   // Dimension of orthogonal box
 
 //Lorenz attractor variables
 double s  = 10;
@@ -75,9 +79,8 @@ void display()
   //  Set view angle
   glRotated(ph,1,0,0);
   glRotated(th,0,1,0);
-  //  Draw 10 pixel yellow points
-  glColor3f(1,1,0);
-  glPointSize(10);
+
+  glPointSize(5);
   glBegin(GL_POINTS);
 
   /*
@@ -103,23 +106,23 @@ void display()
   glColor3f(1,1,1);
   glBegin(GL_LINES);
   glVertex3d(0,0,0);
-  glVertex3d(1,0,0);
+  glVertex3d(AXES_LENGTH,0,0);
   glVertex3d(0,0,0);
-  glVertex3d(0,1,0);
+  glVertex3d(0,AXES_LENGTH,0);
   glVertex3d(0,0,0);
-  glVertex3d(0,0,1);
+  glVertex3d(0,0,AXES_LENGTH);
   glEnd();
   //  Label axes
-  glRasterPos3d(1,0,0);
+  glRasterPos3d(AXES_LENGTH, 0, 0);
   Print("X");
-  glRasterPos3d(0,1,0);
+  glRasterPos3d(0, AXES_LENGTH, 0);
   Print("Y");
-  glRasterPos3d(0,0,1);
+  glRasterPos3d(0, 0, AXES_LENGTH);
   Print("Z");
 
   //  Display parameters
-  glWindowPos2i(5,5);
-  Print("View Angle=%d , %d",th,ph);
+  glWindowPos2i(5, 5);
+  Print("View Angle = %d (H) and %d (V)    s = %lf    b = %lf    r = %lf", th, ph, s, b, r);
 
   //  Flush and swap
   glFlush();
@@ -131,15 +134,19 @@ void display()
  */
 void key(unsigned char ch,int x,int y)
 {
-   //  Exit on ESC
-   if (ch == 27)
-      exit(0);
-   //  Reset view angle
-   else if (ch == '0')
-      th = ph = 0;
-
-   //  Tell GLUT it is necessary to redisplay the scene
-   glutPostRedisplay();
+  switch(ch)
+  {
+    case 27:   exit(0);      break;  //  Exit the program
+    case '0':  th = ph = 0;  break;  //  Reset view angle
+    case 'q':  s -= 0.01;     break;
+    case '1':  s += 0.01;     break;
+    case 'w':  b -= 0.01;     break;
+    case '2':  b += 0.01;     break;
+    case 'e':  r -= 0.01;     break;
+    case '3':  r += 0.01;     break;
+  }
+  //  Tell GLUT it is necessary to redisplay the scene
+  glutPostRedisplay();
 }
 
 /*
@@ -172,7 +179,7 @@ void special(int key,int x,int y)
 void reshape(int width,int height)
 {
    //  Ratio of the width to the height of the window
-   double w2h = (height>0) ? (double)width/height : 1;
+   double w2h = (height > 0) ? (double)width/height : 1;
    //  Set the viewport to the entire window
    glViewport(0,0, width,height);
    //  Tell OpenGL we want to manipulate the projection matrix
@@ -198,7 +205,7 @@ int main(int argc,char* argv[])
    //  Request double buffered, true color window
    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
    //  Request 500 x 500 pixel window
-   glutInitWindowSize(500,500);
+   glutInitWindowSize(1000,1000);
    //  Create the window
    glutCreateWindow("Lorenz Attractor");
    //  Tell GLUT to call "display" when the scene should be drawn
