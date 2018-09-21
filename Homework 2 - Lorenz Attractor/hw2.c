@@ -4,11 +4,15 @@
  *  Adapted by: Sandeep Raj Kumbargeri
  *  CSCI 5229 - Computer Graphics - Fall 2018
  *
- *  Originallly "Example 6 - Coordinates" written by Willem A. (Vlakkies) Schreuder
+ *  Originally "Example 6 - Coordinates" written by Willem A. (Vlakkies) Schreuder
  *  Displays Lorenz Attractor in 3D and allows user to view it by changing its variables and viewing angles
  *
+ * Build instructions:
+ * Run "make" in Windows, OS X and Linux. Download the make utility for Windows if needed.
+ * Run "make clean" to clean up the generated files.
+ *
  *  Use arrow keys to change viewing angles
-
+ *
  *  Special Key Bindings:
  *  1      Increase S
  *  q      Decrease S

@@ -1,16 +1,29 @@
-ex6: Coordinates
+Lorenz Attractor
 
-Willem A. (Vlakkies) Schreuder
-CSCI4229/5229 Fall 2018
+Adapted by: Sandeep Raj Kumbargeri
+CSCI 5229 - Computer Graphics - Fall 2018
 
-Display 2, 3 and 4 dimensional coordinates in 3D.
+Originally "Example 6 - Coordinates" written by Willem A. (Vlakkies) Schreuder
+Displays Lorenz Attractor in 3D and allows user to view it by changing its variables and viewing angles
 
-Key bindings
-  1      2D coordinates
-  2      2D coordinates with fixed Z value
-  3      3D coordinates
-  4      4D coordinates
-  +/-    Increase/decrease z or w
-  arrows Change view angle
-  0      Reset view angle
-  ESC    Exit
+Build instructions:
+Run "make" in Windows, OS X and Linux. Download the make utility for Windows if needed.
+Run "make clean" to clean up the generated files.
+
+Use arrow keys to change viewing angles
+
+Special Key Bindings:
+1      Increase S
+q      Decrease S
+
+2      Increase B
+w      Decrease B
+
+3      Increase R
+e      Decrease R
+
+.     Increase point size
+,     Decrease point size
+
+0      Reset view angle
+ESC    Exit
