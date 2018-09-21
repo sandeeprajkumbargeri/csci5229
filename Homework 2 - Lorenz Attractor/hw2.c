@@ -25,13 +25,10 @@
 #endif
 
 //  Globals
-int th=0;       // Azimuth of view angle
-int ph=0;       // Elevation of view angle
-int mode=1;     // Dimension (1-4)
-double z=0;     // Z variable
-double w=1;     // W variable
+int th = 0;       // Azimuth of view angle
+int ph = 0;       // Elevation of view angle
+
 double dim=2;   // Dimension of orthogonal box
-char* text[] = {"","2D","3D constant Z","3D","4D"};  // Dimension display text
 
 /*
  *  Convenience routine to output raster text
@@ -41,15 +38,15 @@ char* text[] = {"","2D","3D constant Z","3D","4D"};  // Dimension display text
 void Print(const char* format , ...)
 {
    char    buf[LEN];
-   char*   ch=buf;
+   char*   ch = buf;
    va_list args;
    //  Turn the parameters into a character string
    va_start(args,format);
-   vsnprintf(buf,LEN,format,args);
+   vsnprintf(buf, LEN, format, args);
    va_end(args);
    //  Display the characters one at a time at the current raster position
    while (*ch)
-      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*ch++);
+      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *ch++);
 }
 
 /*
@@ -68,41 +65,7 @@ void display()
    glColor3f(1,1,0);
    glPointSize(10);
    glBegin(GL_POINTS);
-   switch (mode)
-   {
-   //  Two dimensions
-   case 1:
-      glVertex2d(0.1,0.1);
-      glVertex2d(0.3,0.3);
-      glVertex2d(0.5,0.5);
-      glVertex2d(0.7,0.7);
-      glVertex2d(0.9,0.9);
-      break;
-   //  Three dimensions - constant Z
-   case 2:
-      glVertex3d(0.1,0.1,z);
-      glVertex3d(0.3,0.3,z);
-      glVertex3d(0.5,0.5,z);
-      glVertex3d(0.7,0.7,z);
-      glVertex3d(0.9,0.9,z);
-      break;
-   //  Three dimensions - variable Z
-   case 3:
-      glVertex3d(0.1,0.1,0.1);
-      glVertex3d(0.3,0.3,0.2);
-      glVertex3d(0.5,0.5,0.4);
-      glVertex3d(0.7,0.7,0.6);
-      glVertex3d(0.9,0.9,0.9);
-      break;
-   //  Four dimensions
-   case 4:
-      glVertex4d(0.1,0.1,0.1,w);
-      glVertex4d(0.3,0.3,0.2,w);
-      glVertex4d(0.5,0.5,0.4,w);
-      glVertex4d(0.7,0.7,0.6,w);
-      glVertex4d(0.9,0.9,0.9,w);
-      break;
-   }
+
    glEnd();
    //  Draw axes in white
    glColor3f(1,1,1);
@@ -121,13 +84,11 @@ void display()
    Print("Y");
    glRasterPos3d(0,0,1);
    Print("Z");
+
    //  Display parameters
    glWindowPos2i(5,5);
-   Print("View Angle=%d,%d  %s",th,ph,text[mode]);
-   if (mode==2)
-      Print("  z=%.1f",z);
-   else if (mode==4)
-      Print("  w=%.1f",w);
+   Print("View Angle=%d , %d",th,ph);
+
    //  Flush and swap
    glFlush();
    glutSwapBuffers();
@@ -144,29 +105,7 @@ void key(unsigned char ch,int x,int y)
    //  Reset view angle
    else if (ch == '0')
       th = ph = 0;
-   //  Switch dimensions
-   else if ('1'<=ch && ch<='4')
-   {
-      mode = ch-'0';
-      if (mode==2) z = 0;
-      if (mode==4) w = 1;
-   }
-   //  Increase w by 0.1
-   else if (ch == '+')
-   {
-      if (mode==2)
-         z += 0.1;
-      else
-         w += 0.1;
-   }
-   //  Decrease w by 0.1
-   else if (ch == '-')
-   {
-      if (mode==2)
-         z -= 0.1;
-      else
-         w -= 0.1;
-   }
+
    //  Tell GLUT it is necessary to redisplay the scene
    glutPostRedisplay();
 }
@@ -210,7 +149,7 @@ void reshape(int width,int height)
    glLoadIdentity();
    //  Orthogonal projection box adjusted for the
    //  aspect ratio of the window
-   glOrtho(-dim*w2h,+dim*w2h, -dim,+dim, -dim,+dim);
+   glOrtho(-dim*w2h, +dim*w2h, -dim, +dim, -dim, +dim);
    //  Switch to manipulating the model matrix
    glMatrixMode(GL_MODELVIEW);
    //  Undo previous transformations
@@ -224,12 +163,12 @@ int main(int argc,char* argv[])
 {
   //  Initialize GLUT and process user parameters
    glutInit(&argc,argv);
-   //  Request double buffered, true color window 
+   //  Request double buffered, true color window
    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
    //  Request 500 x 500 pixel window
    glutInitWindowSize(500,500);
    //  Create the window
-   glutCreateWindow("Coordinates");
+   glutCreateWindow("Lorenz Attractor");
    //  Tell GLUT to call "display" when the scene should be drawn
    glutDisplayFunc(display);
   //  Tell GLUT to call "reshape" when the window is resized
