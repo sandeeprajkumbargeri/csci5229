@@ -215,6 +215,161 @@ static void ship(double x, double y, double z, double dx, double dy, double dz, 
 }
 
 /*
+ *  Draw vertex in polar coordinates
+ */
+static void Vertex(double th,double ph)
+{
+   glColor3f(Cos(th)*Cos(th) , Sin(ph)*Sin(ph) , Sin(th)*Sin(th));
+   glVertex3d(Sin(th)*Cos(ph) , Sin(ph) , Cos(th)*Cos(ph));
+}
+
+/*
+ *  Draw a sphere (version 1)
+ *     at (x,y,z)
+ *     radius (r)
+ */
+static void sphere(double x,double y,double z,double dx, double dy, double dz)
+{
+   const int d=5;
+   int th,ph;
+
+   //  Save transformation
+   glPushMatrix();
+   //  Offset and scale
+   glTranslated(x,y,z);
+   glScaled(dx,dy,dz);
+
+   //  South pole cap
+   glBegin(GL_TRIANGLE_FAN);
+   Vertex(0,-90);
+   for (th=0;th<=360;th+=d)
+   {
+      Vertex(th,d-90);
+   }
+   glEnd();
+
+   //  Latitude bands
+   for (ph=d-90;ph<=90-2*d;ph+=d)
+   {
+      glBegin(GL_QUAD_STRIP);
+      for (th=0;th<=360;th+=d)
+      {
+         Vertex(th,ph);
+         Vertex(th,ph+d);
+      }
+      glEnd();
+   }
+
+   //  North pole cap
+   glBegin(GL_TRIANGLE_FAN);
+   Vertex(0,90);
+   for (th=0;th<=360;th+=d)
+   {
+      Vertex(th,90-d);
+   }
+   glEnd();
+
+   //  Undo transformations
+   glPopMatrix();
+}
+
+static void airplane(double x, double y, double z, double dx, double dy, double dz, double th)
+{
+  //  Save transformation
+  glPushMatrix();
+  //  Offset
+  glTranslated(x,y,z);
+  glRotated(th, 0, 1, 0);
+  glScaled(dx,dy,dz);
+
+  glColor3f(1,1,1);
+
+  cube(0,0,0, 0.5, 2, 0.4, 0);
+  cube(0,0.5,0, 3, 0.2, 0.05, 0);
+  sphere(1.5,0.5,0,0.2, 0.5 ,0.2);
+  sphere(-1.5,0.5,0,0.2, 0.5 ,0.2);
+  cube(3,0.5,0, 0.1, 0.3, 0.2, 90);
+  cube(-3,0.5,0, 0.1, 0.3, 0.2, 90);
+  cube(0,-1.7,0.6, 0.1, 0.3, 0.4, 0);
+  cube(0,-1.9,0.4, 1, 0.1, 0.1, 180);
+
+
+
+  glBegin(GL_TRIANGLES);
+
+  glVertex3f(-0.5,+2, 0.4);
+  glVertex3f(+0.5,+2, 0.4);
+  glVertex3f(0,+3, 0);
+
+  glVertex3f(-0.5,+2, -0.4);
+  glVertex3f(+0.5,+2, -0.4);
+  glVertex3f(0,+3, 0);
+
+  glVertex3f(+0.5,+2, 0.4);
+  glVertex3f(+0.5,+2, -0.4);
+  glVertex3f(0,+3, 0);
+
+  glVertex3f(-0.5,+2, +0.4);
+  glVertex3f(-0.5,+2, -0.4);
+  glVertex3f(0,+3, 0);
+
+  glColor3f(1,1,1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-0.1,+3, 1);
+  glVertex3f(+0.1,+3, 1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-0.1,+3, -1);
+  glVertex3f(+0.1,+3, -1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-0.4,+3, 1);
+  glVertex3f(-0.6,+3, 1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-0.4,+3, -1);
+  glVertex3f(-0.6,+3, -1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(+0.4,+3, 1);
+  glVertex3f(+0.6,+3, 1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(+0.4,+3, -1);
+  glVertex3f(+0.6,+3, -1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(+1,+3, -0.1);
+  glVertex3f(+1,+3, +0.1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-1,+3, -0.1);
+  glVertex3f(-1,+3, +0.1);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(+1,+3, -0.4);
+  glVertex3f(+1,+3, -0.6);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-1,+3, +0.4);
+  glVertex3f(-1,+3, +0.6);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(-1,+3, -0.4);
+  glVertex3f(-1,+3, -0.6);
+
+  glVertex3f(0,+3, 0);
+  glVertex3f(+1,+3, +0.4);
+  glVertex3f(+1,+3, +0.6);
+
+  glEnd();
+  glPopMatrix();
+
+
+}
+
+/*
  *  OpenGL (GLUT) calls this routine to display the scene
  */
 void display()
@@ -247,7 +402,8 @@ void display()
          for (k=-8;k<=1;k++)
             cube(i,j,k , 0.1,0.3,0.1 , 0);*/
 
-  ship(1,1,1,1,1,1,0);
+  //ship(1,1,1,1,1,1,0);
+  airplane(1,1,1,1,1,1,0);
 
    //  Draw axes
    glColor3f(1,1,1);
