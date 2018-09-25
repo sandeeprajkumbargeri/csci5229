@@ -82,9 +82,7 @@ static void Project()
  *     dimensions (dx,dy,dz)
  *     rotated th about the y axis
  */
-static void cube(double x,double y,double z,
-                 double dx,double dy,double dz,
-                 double th)
+static void cube(double x,double y,double z, double dx,double dy,double dz, double th)
 {
    //  Save transformation
    glPushMatrix();
@@ -136,6 +134,86 @@ static void cube(double x,double y,double z,
    glPopMatrix();
 }
 
+static void ship(double x, double y, double z, double dx, double dy, double dz, double th)
+{
+  //  Save transformation
+  glPushMatrix();
+  //  Offset
+  glTranslated(x,y,z);
+  glRotated(th, 0, 1, 0);
+  glScaled(dx,dy,dz);
+
+  glColor3f(1,1,1);
+
+  glBegin(GL_QUADS);
+
+  glVertex3f(-1,-1, 1);
+  glVertex3f(+1,-1, 1);
+  glVertex3f(+1,+1, 1);
+  glVertex3f(-1,+1, 1);
+
+  glColor3f(0,1,0);
+
+  glVertex3f(+1,-1, +1);
+  glVertex3f(0,-1, 0);
+  glVertex3f(0,+1, 0);
+  glVertex3f(+1,+1, +1);
+
+  glColor3f(0,1,1);
+
+  glVertex3f(-1,-1,+1);
+  glVertex3f(0,-1, 0);
+  glVertex3f(0,+1, 0);
+  glVertex3f(-1,+1, +1);
+
+  glEnd();
+
+  glBegin(GL_TRIANGLES);
+
+  glColor3f(1,1,1);
+
+  glVertex3f(-1,+1, 1);
+  glVertex3f(+1,+1, 1);
+  glVertex3f(0,+2, 1);
+
+  glVertex3f(-1,-1, 1);
+  glVertex3f(0,-2, 1);
+  glVertex3f(+1,-1, 1);
+
+  glColor3f(1,1,1);
+
+  glVertex3f(-1,+1, 1);
+  glVertex3f(0,+1, 0);
+  glVertex3f(0,+2, 1);
+
+  glColor3f(1,0,1);
+
+  glVertex3f(+1,+1, 1);
+  glVertex3f(0,+1, 0);
+  glVertex3f(0,+2, 1);
+
+  glColor3f(1,1,0);
+
+  glVertex3f(-1,-1, 1);
+  glVertex3f(0,-1, 0);
+  glVertex3f(0,-2, 1);
+
+  glColor3f(1,0,1);
+
+  glVertex3f(+1,-1, 1);
+  glVertex3f(0,-1, 0);
+  glVertex3f(0,-2, 1);
+
+  glEnd();
+
+  cube(0,0,1.2, 0.5, 1.0, 0.2, 0);
+  cube(0,0,1.6, 0.25, 0.75, 0.2, 0);
+  cube(0, 0.25, 2.2, 0.1, 0.1, 0.4, 0);
+  cube(0, -0.25, 2.0, 0.1, 0.1, 0.2, 0);
+
+  glPopMatrix();
+}
+
 /*
  *  OpenGL (GLUT) calls this routine to display the scene
  */
@@ -163,11 +241,14 @@ void display()
       glRotatef(ph,1,0,0);
       glRotatef(th,0,1,0);
    }
-   //  Draw cubes
-   for (i=-1;i<=1;i++)
-      for (j=-1;j<=1;j++)
-         for (k=-1;k<=1;k++)
-            cube(i,j,k , 0.3,0.3,0.3 , 0);
+   /*//  Draw cubes
+   for (i=-2;i<=4;i++)
+      for (j=-3;j<=1;j++)
+         for (k=-8;k<=1;k++)
+            cube(i,j,k , 0.1,0.3,0.1 , 0);*/
+
+  ship(1,1,1,1,1,1,0);
+
    //  Draw axes
    glColor3f(1,1,1);
    if (axes)
