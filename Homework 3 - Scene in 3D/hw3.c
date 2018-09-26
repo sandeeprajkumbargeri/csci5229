@@ -30,11 +30,12 @@ int th=0;         //  Azimuth of view angle
 int ph=0;         //  Elevation of view angle
 int fov=55;       //  Field of view (for perspective)
 double asp=1;     //  Aspect ratio
-double dim=5.0;   //  Size of world
+double dim=30.0;   //  Size of world
 
 //  Macro for sin & cos in degrees
 #define Cos(th) cos(3.1415926/180*(th))
 #define Sin(th) sin(3.1415926/180*(th))
+#define rgb(r,g,b) glColor3ub(r,g,b)
 
 /*
  *  Convenience routine to output raster text
@@ -93,37 +94,31 @@ static void cube(double x,double y,double z, double dx,double dy,double dz, doub
    //  Cube
    glBegin(GL_QUADS);
    //  Front
-   glColor3f(1,0,0);
    glVertex3f(-1,-1, 1);
    glVertex3f(+1,-1, 1);
    glVertex3f(+1,+1, 1);
    glVertex3f(-1,+1, 1);
    //  Back
-   glColor3f(0,0,1);
    glVertex3f(+1,-1,-1);
    glVertex3f(-1,-1,-1);
    glVertex3f(-1,+1,-1);
    glVertex3f(+1,+1,-1);
    //  Right
-   glColor3f(1,1,0);
    glVertex3f(+1,-1,+1);
    glVertex3f(+1,-1,-1);
    glVertex3f(+1,+1,-1);
    glVertex3f(+1,+1,+1);
    //  Left
-   glColor3f(0,1,0);
    glVertex3f(-1,-1,-1);
    glVertex3f(-1,-1,+1);
    glVertex3f(-1,+1,+1);
    glVertex3f(-1,+1,-1);
    //  Top
-   glColor3f(0,1,1);
    glVertex3f(-1,+1,+1);
    glVertex3f(+1,+1,+1);
    glVertex3f(+1,+1,-1);
    glVertex3f(-1,+1,-1);
    //  Bottom
-   glColor3f(1,0,1);
    glVertex3f(-1,-1,-1);
    glVertex3f(+1,-1,-1);
    glVertex3f(+1,-1,+1);
@@ -147,19 +142,21 @@ static void ship(double x, double y, double z, double dx, double dy, double dz, 
 
   glBegin(GL_QUADS);
 
+  rgb(176,190,197);
+
+  //ship top base
   glVertex3f(-1,-1, 1);
   glVertex3f(+1,-1, 1);
   glVertex3f(+1,+1, 1);
   glVertex3f(-1,+1, 1);
 
-  glColor3f(0,1,0);
+  rgb(120,144,156);
 
+  //ship bottom center
   glVertex3f(+1,-1, +1);
   glVertex3f(0,-1, 0);
   glVertex3f(0,+1, 0);
   glVertex3f(+1,+1, +1);
-
-  glColor3f(0,1,1);
 
   glVertex3f(-1,-1,+1);
   glVertex3f(0,-1, 0);
@@ -170,8 +167,9 @@ static void ship(double x, double y, double z, double dx, double dy, double dz, 
 
   glBegin(GL_TRIANGLES);
 
-  glColor3f(1,1,1);
+  rgb(176,190,197);
 
+  //ship top triangles
   glVertex3f(-1,+1, 1);
   glVertex3f(+1,+1, 1);
   glVertex3f(0,+2, 1);
@@ -180,25 +178,20 @@ static void ship(double x, double y, double z, double dx, double dy, double dz, 
   glVertex3f(0,-2, 1);
   glVertex3f(+1,-1, 1);
 
-  glColor3f(1,1,1);
+  rgb(120,144,156);
 
+  //ship bottom triangles
   glVertex3f(-1,+1, 1);
   glVertex3f(0,+1, 0);
   glVertex3f(0,+2, 1);
-
-  glColor3f(1,0,1);
 
   glVertex3f(+1,+1, 1);
   glVertex3f(0,+1, 0);
   glVertex3f(0,+2, 1);
 
-  glColor3f(1,1,0);
-
   glVertex3f(-1,-1, 1);
   glVertex3f(0,-1, 0);
   glVertex3f(0,-2, 1);
-
-  glColor3f(1,0,1);
 
   glVertex3f(+1,-1, 1);
   glVertex3f(0,-1, 0);
@@ -206,9 +199,14 @@ static void ship(double x, double y, double z, double dx, double dy, double dz, 
 
   glEnd();
 
+  //ship cargo level up
+  rgb(141,110,99);
   cube(0,0,1.2, 0.5, 1.0, 0.2, 0);
+  rgb(161,136,127);
   cube(0,0,1.6, 0.25, 0.75, 0.2, 0);
+  rgb(188,170,164);
   cube(0, 0.25, 2.2, 0.1, 0.1, 0.4, 0);
+  rgb(215,204,200);
   cube(0, -0.25, 2.0, 0.1, 0.1, 0.2, 0);
 
   glPopMatrix();
@@ -282,14 +280,25 @@ static void airplane(double x, double y, double z, double dx, double dy, double 
   glRotated(th, 0, 1, 0);
   glScaled(dx,dy,dz);
 
-  glColor3f(1,1,1);
-
+  //trunk
+  rgb(224,224,224);
   cube(0,0,0, 0.5, 2, 0.4, 0);
+
+  //wings
+  rgb(144,164,174);
   cube(0,0.5,0, 3, 0.2, 0.05, 0);
+
+  //jet propellers
   sphere(1.5,0.5,0,0.2, 0.5 ,0.2);
   sphere(-1.5,0.5,0,0.2, 0.5 ,0.2);
+
+  //wing endings
+  rgb(245,245,245);
   cube(3,0.5,0, 0.1, 0.3, 0.2, 90);
   cube(-3,0.5,0, 0.1, 0.3, 0.2, 90);
+
+  //tail directors
+  rgb(176,190,197);
   cube(0,-1.7,0.6, 0.1, 0.3, 0.4, 0);
   cube(0,-1.9,0.4, 1, 0.1, 0.1, 180);
 
@@ -297,6 +306,8 @@ static void airplane(double x, double y, double z, double dx, double dy, double 
 
   glBegin(GL_TRIANGLES);
 
+  //airplane pointy head
+  rgb(158,158,158);
   glVertex3f(-0.5,+2, 0.4);
   glVertex3f(+0.5,+2, 0.4);
   glVertex3f(0,+3, 0);
@@ -313,8 +324,10 @@ static void airplane(double x, double y, double z, double dx, double dy, double 
   glVertex3f(-0.5,+2, -0.4);
   glVertex3f(0,+3, 0);
 
+
   glColor3f(1,1,1);
 
+  //propeller fan
   glVertex3f(0,+3, 0);
   glVertex3f(-0.1,+3, 1);
   glVertex3f(+0.1,+3, 1);
@@ -365,8 +378,6 @@ static void airplane(double x, double y, double z, double dx, double dy, double 
 
   glEnd();
   glPopMatrix();
-
-
 }
 
 /*
@@ -402,8 +413,14 @@ void display()
          for (k=-8;k<=1;k++)
             cube(i,j,k , 0.1,0.3,0.1 , 0);*/
 
-  //ship(1,1,1,1,1,1,0);
-  airplane(1,1,1,1,1,1,0);
+  rgb(41,182,246);
+  cube(0,0,-10, 30,30,10,0);
+
+  ship(0,0,0,1,1,1,0);
+  ship(5,10,0,1,2,2,0);
+  airplane(5,5,8,1,0.5,0.5,30);
+  airplane(-5,-5,4,2,2,2,330);
+
 
    //  Draw axes
    glColor3f(1,1,1);
