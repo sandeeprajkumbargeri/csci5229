@@ -3,8 +3,8 @@
 Author: Sandeep Raj Kumbargeri
 CSCI 5229 - Computer Graphics - Fall 2018 - University of Colorado Boulder
 
-Elements taken from Willem A. (Vlakkies) Schreuder's [Ex8 - Objects] (http://www.prinmath.com/csci5229/F18/programs/ex8.zip) and
-[Ex9 - Projections] (http://www.prinmath.com/csci5229/F18/programs/ex9.zip)
+Elements taken from Willem A. (Vlakkies) Schreuder's [Ex8 - Objects](http://www.prinmath.com/csci5229/F18/programs/ex8.zip) and
+[Ex9 - Projections](http://www.prinmath.com/csci5229/F18/programs/ex9.zip)
 
 Displays a scene consisting of two ships and two airplanes and allows the user to explore in 3D.
 
