@@ -20,15 +20,22 @@
  *  Run "make" in Windows, OS X and Linux. Download the make utility for Windows if needed.
  *  Run "make clean" to clean up the generated files.
  *
- *  Use arrow keys to change viewing angles
+ *  Use arrow keys to change viewing angles. In first person mode, only left and right arrows work.
  *
  *  Special Key Bindings:
- *  a/A      Toggle displaying axes
+ *  t/T      Toggle displaying axes
  *  c/C      Toggle displaying water
  *  m/M      Toggle the viewing mode (Orthogonal/Prespective)
  *
  *  l/L      Increase field of view
  *  k/K      Decrease field of view
+ *
+ *  w/W     Move X positive
+ *  s/S     Move X negative
+ *  a/A     Move Y negative
+ *  d/D     Move Y positive
+ *  z/Z     Move Z negative
+ *  q/Q     Move Z positive
  *
  *  0      Reset view angle
  *  ESC    Exit
@@ -58,6 +65,17 @@ double asp = 1;     //  Aspect ratio
 double dim = 40.0;   //  Size of world
 
 bool water = true;
+
+double Ex = 0;
+double Ey = 0;
+double Ez = 0;
+
+double Fx = 0;
+double Fy = -20;
+double Fz = 1;
+
+double Dx = 0;
+double Dy = 0;
 
 //  Macro for sin & cos in degrees
 #define Cos(th) cos(3.1415926/180*(th))
@@ -421,21 +439,32 @@ void display()
    //  Undo previous transformations
    glLoadIdentity();
 
-   //  Perspective - set eye position
-   if (mode)
+   switch(mode)
    {
-      double Ex = -2*dim*Sin(th)*Cos(ph);
-      double Ey = +2*dim        *Sin(ph);
-      double Ez = +2*dim*Cos(th)*Cos(ph);
-      gluLookAt(Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
+     //  Orthogonal - set world orientation
+     case 0:
+          glRotatef(ph, 1, 0, 0);
+          glRotatef(th, 0, 1, 0);
+        break;
+    //  Perspective - set eye position
+     case 1:
+          Ex = -2*dim*Sin(th)*Cos(ph);
+          Ey = +2*dim        *Sin(ph);
+          Ez = +2*dim*Cos(th)*Cos(ph);
+          gluLookAt(Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
+        break;
+
+     case 2:
+          Dx = (Fx + (dim * Cos(-th)));
+          Dy = (Fy + (dim * Sin(-th)));
+
+          // Dx = +2*dim*Sin(th)*Cos(ph);
+          // Dy = -2*dim        *Sin(ph);
+
+          gluLookAt(Fx, Fy, Fz, Dx, Dy, Fz, 0, 0, 1);
+          printf("%lf  %lf  %lf  %d %lf  %lf\n", Fx, Fy, Fz, th, Dx, Dy);
    }
 
-   //  Orthogonal - set world orientation
-   else
-   {
-      glRotatef(ph, 1, 0, 0);
-      glRotatef(th, 0, 1, 0);
-   }
 
   rgb(41,182,246);
 
@@ -473,7 +502,7 @@ void display()
 
    //  Display parameters
    glWindowPos2i(5, 5);
-   Print("Angle = %d, %d     Dim = %.1f     FOV = %d     Projection = %s", th, ph, dim, fov, mode?"Perpective":"Orthogonal");
+   Print("Angle = %d, %d     Dim = %.1f     FOV = %d     Projection = %s", th, ph, dim, fov, (mode == 0)? "Orthogonal":((mode == 1)? "Prespective":(mode == 2)? "First Person":"Error"));
 
    //  Render the scene and make it visible
    glFlush();
@@ -496,7 +525,7 @@ void special(int key,int x,int y)
       ph += 5;
    //  Down arrow key - decrease elevation by 5 degrees
    else if (key == GLUT_KEY_DOWN)
-      ph -= 5;
+        ph -= 5;
    //  PageUp key - increase dim
    else if (key == GLUT_KEY_PAGE_UP)
       dim += 0.1;
@@ -523,11 +552,17 @@ void key(unsigned char ch,int x,int y)
   {
     case 27:                exit(0);       break;  //  Exit the program
     case '0':               th = ph = 0;   break;  //  Reset view angle
-    case 'a':   case 'A':   axes = 1 - axes;     break;  //  Toggle axes
-    case 'm':   case 'M':   mode = 1 - mode;     break;  //  Switch display mode
+    case 't':   case 'T':   axes = 1 - axes;     break;  //  Toggle axes
+    case 'm':   case 'M':   (mode == 0)? (mode = 1):((mode == 1)? (mode = 2):(mode == 2)? (mode = 0):(mode = 2));     break;  //  Switch display mode
     case 'l':   case 'L':   fov++;     break;  // Increase the focal length
     case 'k':   case 'K':   fov--;     break;  // Decrease the focal length
     case 'c':   case 'C':   water = !water;     break; // Toggle water under the ships
+    case 'w':   case 'W':   Fy += 0.5;     break;  // Decrease the focal length
+    case 's':   case 'S':   Fy -= 0.5;     break;  // Decrease the focal length
+    case 'a':   case 'A':   Fx -= 0.5;     break;  // Decrease the focal length
+    case 'd':   case 'D':   Fx += 0.5;     break;  // Decrease the focal length
+    case 'q':   case 'Q':   Fz += 0.5;     break;  // Decrease the focal length
+    case 'z':   case 'Z':   Fz -= 0.5;     break;  // Decrease the focal length
   }
 
    //  Reproject
@@ -559,7 +594,7 @@ int main(int argc, char* argv[])
    //  Request double buffered, true color window with Z buffering at 600x600
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
    glutInitWindowSize(1000, 1000);
-   glutCreateWindow("Scene in 3D - Dunkirk");
+   glutCreateWindow("Sandeep Raj Kumbargeri - Homework 3 - Projections");
 
    //  Set callbacks
    glutDisplayFunc(display);
