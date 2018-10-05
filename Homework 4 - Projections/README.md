@@ -27,5 +27,11 @@ Use arrow keys to change viewing angles
 - m/M - Toggle the viewing mode (Orthogonal/Prespective)
 - l/L - Increase field of view
 - k/K - Decrease field of view
+- w/W - Move X positive
+- s/S - Move X negative
+- a/A - Move Y negative
+- d/D - Move Y positive
+- z/Z - Move Z negative
+- q/Q - Move Z positive
 - 0 - Reset view angle
 - ESC - Exit
