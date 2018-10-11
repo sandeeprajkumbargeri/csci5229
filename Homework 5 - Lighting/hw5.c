@@ -447,6 +447,7 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glColor3f(1,1,1);
 
   //Draw the fan blades at the tip of the head
+  glNormal3d(0, +1, 0);
   glVertex3f(0, +3, 0);
   glVertex3f(-0.1, +3, +1);
   glVertex3f(+0.1, +3, +1);
@@ -573,7 +574,7 @@ void display()
   draw_ship(5,10,0,1,2,2,0);
 
   draw_airplane(5,5,8,0.5,0.5,0.5,30);
-  draw_airplane(-1,-1,3,2,2,2,330);
+  draw_airplane(-1,-1,3,1,1,1,330);
 
    //  Draw axes
    glColor3f(1,1,1);
