@@ -767,7 +767,7 @@ int main(int argc, char* argv[])
    //  Request double buffered, true color window with Z buffering at 600x600
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
    glutInitWindowSize(1000, 1000);
-   glutCreateWindow("Sandeep Raj Kumbargeri - Homework 5");
+   glutCreateWindow("Lighting - Scene in 3D");
 
    //  Set callbacks
    glutDisplayFunc(display);
