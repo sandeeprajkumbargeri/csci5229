@@ -1,12 +1,12 @@
-### Lighting the scene in 3D - Dunkirk
+### Textures and lighting the scene in 3D - Dunkirk
 
 Author: Sandeep Raj Kumbargeri
 CSCI 5229 - Computer Graphics - Fall 2018 - University of Colorado Boulder
 
 Elements taken from Willem A. (Vlakkies) Schreuder's [Ex8 - Objects](http://www.prinmath.com/csci5229/F18/programs/ex8.zip),
-[Ex9 - Projections](http://www.prinmath.com/csci5229/F18/programs/ex9.zip) and [Ex13 - Lighting] (http://www.prinmath.com/csci5229/F18/programs/ex13.zip)
+[Ex9 - Projections](http://www.prinmath.com/csci5229/F18/programs/ex9.zip), [Ex13 - Lighting] (http://www.prinmath.com/csci5229/F18/programs/ex13.zip) and [Ex14 - Texture Mapping] (http://www.prinmath.com/csci5229/F18/programs/ex14.zip)
 
-Displays a scene consisting of two ships and two airplanes and allows the user to explore in 3D. All the objects in the scene are lighted using a lightball which can be moved around and adjusted using the key bindings.
+Displays a scene consisting of two textured ships and two textured airplanes and allows the user to explore in 3D. All the objects in the scene are lighted using a lightball which can be moved around and adjusted using the key bindings.
 
 #### How it works - Overview
 - This code is written using OpenGL API to draw objects and GLUT windowing API for window creation and resizing.

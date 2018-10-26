@@ -1,13 +1,14 @@
 /*
- *  Lighting the scene in 3D - Dunkirk
+ *  Textures and lighting the scene in 3D - Dunkirk
  *
  *  Author: Sandeep Raj Kumbargeri
  *  CSCI 5229 - Computer Graphics - Fall 2018 - University of Colorado Boulder
  *
  *  Elements taken from Willem A. (Vlakkies) Schreuder's "Ex8 - Objects" (http://www.prinmath.com/csci5229/F18/programs/ex8.zip),
- *  "Ex9 - Projections" (http://www.prinmath.com/csci5229/F18/programs/ex9.zip) and "Ex13 - Lighting" (http://www.prinmath.com/csci5229/F18/programs/ex13.zip)
+ *  "Ex9 - Projections" (http://www.prinmath.com/csci5229/F18/programs/ex9.zip), "Ex13 - Lighting" (http://www.prinmath.com/csci5229/F18/programs/ex13.zip)
+ *  and "Ex14 - Texture Mapping" (http://www.prinmath.com/csci5229/F18/programs/ex14.zip)
  *
- *  Displays a scene consisting of two ships and two airplanes and allows the user to explore in 3D. All the objects in the scene are
+ *  Displays a scene consisting of two textured ships and two textured airplanes and allows the user to explore in 3D. All the objects in the scene are
  *  lighted using a lightball which can be moved around and adjusted using the key bindings.
  *
  *  How it works - Overview:
@@ -49,19 +50,7 @@
  */
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <math.h>
-#include <stdbool.h>
-
-//  OpenGL with prototypes for glext
-#define GL_GLEXT_PROTOTYPES
-#ifdef __APPLE__
-#include <GLUT/glut.h>
-#else
-#include <GL/glut.h>
-#endif
+#include "CSCIx229.h"
 
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
 
@@ -93,34 +82,15 @@ float shiny   =   1;  // Shininess (value)
 int zh        =  90;  // Light azimuth
 float ylight  =   0;  // Elevation of light
 
-//  Macro for sin & cos in degrees
-#define Cos(th) cos(3.1415926/180*(th))
-#define Sin(th) sin(3.1415926/180*(th))
-#define rgb(r,g,b) glColor3ub(r,g,b)
+unsigned int texture[10];
 
-/*
- *  Convenience routine to output raster text
- *  Use VARARGS to make this more flexible
- */
-#define LEN 8192  //  Maximum length of text string
-void Print(const char* format , ...)
-{
-   char    buf[LEN];
-   char*   ch = buf;
-   va_list args;
-   //  Turn the parameters into a character string
-   va_start(args, format);
-   vsnprintf(buf, LEN, format, args);
-   va_end(args);
-   //  Display the characters one at a time at the current raster position
-   while (*ch)
-      glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, *ch++);
-}
+//  Macro for sin & cos in degrees
+#define rgb(r,g,b) glColor3ub(r,g,b)
 
 /*
  *  Set projection
  */
-static void Project()
+void Project()
 {
    //  Tell OpenGL we want to manipulate the projection matrix
    glMatrixMode(GL_PROJECTION);
@@ -164,40 +134,55 @@ static void draw_cube(double x, double y, double z, double dx, double dy ,double
    glBegin(GL_QUADS);
    //  Front
    glNormal3f( 0, 0, +1);
-   glVertex3f(-1, -1, +1);
-   glVertex3f(+1, -1, +1);
-   glVertex3f(+1, +1, +1);
-   glVertex3f(-1, +1, +1);
+   glTexCoord2f(0.0, 0.0);   glVertex3f(-1, -1, +1);
+   glTexCoord2f(1.0, 0.0);   glVertex3f(+1, -1, +1);
+   glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, +1);
+   glTexCoord2f(0.0, 1.0);   glVertex3f(-1, +1, +1);
+   glEnd();
+
+   glBegin(GL_QUADS);
    //  Back
    glNormal3f( 0, 0, -1);
-   glVertex3f(+1, -1, -1);
-   glVertex3f(-1, -1, -1);
-   glVertex3f(-1, +1, -1);
-   glVertex3f(+1, +1, -1);
+   glTexCoord2f(1.0, 0.0);    glVertex3f(+1, -1, -1);
+   glTexCoord2f(0.0, 0.0);    glVertex3f(-1, -1, -1);
+   glTexCoord2f(0.0, 1.0);    glVertex3f(-1, +1, -1);
+   glTexCoord2f(1.0, 1.0);    glVertex3f(+1, +1, -1);
+   glEnd();
+
+   glBegin(GL_QUADS);
    //  Right
    glNormal3f(+1, 0, 0);
-   glVertex3f(+1, -1, +1);
-   glVertex3f(+1, -1, -1);
-   glVertex3f(+1, +1, -1);
-   glVertex3f(+1, +1, +1);
+   glTexCoord2f(0.0, 1.0);    glVertex3f(+1, -1, +1);
+   glTexCoord2f(0.0, 0.0);    glVertex3f(+1, -1, -1);
+   glTexCoord2f(1.0, 0.0);    glVertex3f(+1, +1, -1);
+   glTexCoord2f(1.0, 1.0);    glVertex3f(+1, +1, +1);
+   glEnd();
+
+   glBegin(GL_QUADS);
    //  Left
    glNormal3f(-1, 0, 0);
-   glVertex3f(-1, -1, -1);
-   glVertex3f(-1, -1, +1);
-   glVertex3f(-1, +1, +1);
-   glVertex3f(-1, +1, -1);
+   glTexCoord2f(0.0, 0.0);    glVertex3f(-1, -1, -1);
+   glTexCoord2f(0.0, 1.0);    glVertex3f(-1, -1, +1);
+   glTexCoord2f(1.0, 1.0);    glVertex3f(-1, +1, +1);
+   glTexCoord2f(1.0, 0.0);    glVertex3f(-1, +1, -1);
+   glEnd();
+
+   glBegin(GL_QUADS);
    //  Top
    glNormal3f( 0, +1, 0);
-   glVertex3f(-1, +1, +1);
-   glVertex3f(+1, +1, +1);
-   glVertex3f(+1, +1, -1);
-   glVertex3f(-1, +1, -1);
+   glTexCoord2f(0.0, 1.0);    glVertex3f(-1, +1, +1);
+   glTexCoord2f(1.0, 1.0);    glVertex3f(+1, +1, +1);
+   glTexCoord2f(1.0, 0.0);    glVertex3f(+1, +1, -1);
+   glTexCoord2f(0.0, 0.0);    glVertex3f(-1, +1, -1);
+   glEnd();
+
+   glBegin(GL_QUADS);
    //  Bottom
    glNormal3f( 0, -one, 0);
-   glVertex3f(-1, -1, -1);
-   glVertex3f(+1, -1, -1);
-   glVertex3f(+1, -1, +1);
-   glVertex3f(-1, -1, +1);
+   glTexCoord2f(0.0, 0.0);    glVertex3f(-1, -1, -1);
+   glTexCoord2f(1.0, 0.0);    glVertex3f(+1, -1, -1);
+   glTexCoord2f(1.0, 1.0);    glVertex3f(+1, -1, +1);
+   glTexCoord2f(0.0, 1.0);    glVertex3f(-1, -1, +1);
    //  End
    glEnd();
 
@@ -214,84 +199,104 @@ static void draw_ship(double x, double y, double z, double dx, double dy, double
   glRotated(th, 0, 1, 0);
   glScaled(dx,dy,dz);
 
+
+  rgb(176, 190, 197);
+  glBindTexture(GL_TEXTURE_2D,texture[0]);
+
   //Start drawing ship
   glBegin(GL_QUADS);
 
-  rgb(176, 190, 197);
-
   //Ship's top base
   glNormal3d(0, 0, 1);
-  glVertex3f(-1, -1, 1);
-  glVertex3f(+1, -1, 1);
-  glVertex3f(+1, +1, 1);
-  glVertex3f(-1, +1, 1);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-1, -1, 1);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+1, -1, 1);
+  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, 1);
+  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, +1, 1);
+  glEnd();
 
+
+  glBegin(GL_QUADS);
   rgb(120, 144, 156);
 
   //Ship's bottom center
   GL_NORMAL(0, -1, 0, 0, +1, 0, +1,- 1, +1);
-  glVertex3f(+1, -1, +1);
-  glVertex3f(0, -1, 0);
-  glVertex3f(0, +1, 0);
-  glVertex3f(+1, +1, +1);
+  glTexCoord2f(0.0, 1.0);   glVertex3f(+1, -1, +1);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(0, -1, 0);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(0, +1, 0);
+  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, +1);
+  glEnd();
 
+  glBegin(GL_QUADS);
   GL_NORMAL(0, -1, 0,-1, -1, +1,0, +1, 0);
-  glVertex3f(-1, -1, +1);
-  glVertex3f(0, -1, 0);
-  glVertex3f(0, +1, 0);
-  glVertex3f(-1, +1, +1);
+  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, -1, +1);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(0, -1, 0);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(0, +1, 0);
+  glTexCoord2f(1.0, 1.0);   glVertex3f(-1, +1, +1);
 
   glEnd();
 
-  glBegin(GL_TRIANGLES);
 
   rgb(176, 190, 197);
 
+  glBegin(GL_TRIANGLES);
+
   //Ship's top base corner triangles
   glNormal3d(0, 0, +1);
-  glVertex3f(-1, +1, 1);
-  glVertex3f(+1, +1, 1);
-  glVertex3f(0, +2, 1);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-1, +1, 1);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+1, +1, 1);
+  glTexCoord2f(0.5, 1.0);   glVertex3f(0, +2, 1);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   glNormal3d(0, 0, +1);
-  glVertex3f(-1, -1, +1);
-  glVertex3f(0, -2, +1);
-  glVertex3f(+1, -1, +1);
+  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, -1, +1);
+  glTexCoord2f(0.5, 0.0);   glVertex3f(0, -2, +1);
+  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, -1, +1);
+  glEnd();
 
   rgb(120, 144, 156);
 
+  glBegin(GL_TRIANGLES);
   //Ship's bottom corner triangles
   GL_NORMAL(-1, +1, +1, 0, +2, +1, 0, +1, 0);
-  glVertex3f(-1, +1, +1);
-  glVertex3f(0, +1, 0);
-  glVertex3f(0, +2, +1);
+  glTexCoord2f(0.0, 0.0);     glVertex3f(-1, +1, +1);
+  glTexCoord2f(0.5, 1.0);     glVertex3f(0, +1, 0);
+  glTexCoord2f(1.0, 0.0);     glVertex3f(0, +2, +1);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   GL_NORMAL(0, +2, +1, +1, +1, +1, 0, +1, 0);
-  glVertex3f(+1, +1, +1);
-  glVertex3f(0, +1, 0);
-  glVertex3f(0, +2, +1);
+  glTexCoord2f(0.0, 0.0);     glVertex3f(+1, +1, +1);
+  glTexCoord2f(0.5, 1.0);     glVertex3f(0, +1, 0);
+  glTexCoord2f(1.0, 0.0);     glVertex3f(0, +2, +1);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   GL_NORMAL(0, -2, +1, -1,-1, +1, 0, -1, 0);
-  glVertex3f(-1,-1, +1);
-  glVertex3f(0, -1, 0);
-  glVertex3f(0, -2, +1);
+  glTexCoord2f(0.0, 0.0);     glVertex3f(-1,-1, +1);
+  glTexCoord2f(0.5, 1.0);     glVertex3f(0, -1, 0);
+  glTexCoord2f(1.0, 0.0);     glVertex3f(0, -2, +1);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   GL_NORMAL(0, -1, 0, +1, -1, +1, 0, -2, +1);
-  glVertex3f(+1, -1, +1);
-  glVertex3f(0, -1, 0);
-  glVertex3f(0, -2, +1);
-
+  glTexCoord2f(0.0, 0.0);     glVertex3f(+1, -1, +1);
+  glTexCoord2f(0.5, 1.0);     glVertex3f(0, -1, 0);
+  glTexCoord2f(1.0, 0.0);     glVertex3f(0, -2, +1);
   glEnd();
 
   //Ship's cargo level up
   rgb(141, 110, 99);
+  glBindTexture(GL_TEXTURE_2D,texture[7]);
   draw_cube(0, 0, 1.2, 0.5, 1.0, 0.2, 0);
 
   rgb(161, 136, 127);
+  glBindTexture(GL_TEXTURE_2D,texture[2]);
   draw_cube(0, 0, 1.6, 0.25, 0.75, 0.2, 0);
 
   //Ship's cargo chimney pipes
   rgb(188, 170, 164);
+  glBindTexture(GL_TEXTURE_2D,texture[4]);
   draw_cube(0, 0.25, 2.2, 0.1, 0.1, 0.4, 0);
 
   rgb(215, 204, 200);
@@ -399,16 +404,20 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glScaled(dx, dy, dz);
 
   //Draw the trunk
+  glBindTexture(GL_TEXTURE_2D,texture[4]);
   rgb(224, 224, 224);
   draw_cube(0, 0, 0, 0.5, 2, 0.4, 0);
 
+  glBindTexture(GL_TEXTURE_2D,texture[1]);
   //Draw the wings
   rgb(144, 164, 174);
   draw_cube(0, 0.5, 0, 3, 0.2, 0.05, 0);
 
+  glDisable(GL_TEXTURE_2D);
   //Draw the jet propellers under the wings
   draw_sphere(1.5, 0.5, -0.2, 0.2, 0.5, 0.2);
   draw_sphere(-1.5, 0.5, -0.2, 0.2, 0.5 ,0.2);
+  glEnable(GL_TEXTURE_2D);
 
   //Highlight the wing endings
   rgb(245, 245, 245);
@@ -420,31 +429,42 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   draw_cube(0, -1.7, 0.6, 0.1, 0.3, 0.4, 0);
   draw_cube(0, -1.9, 0.4, 1, 0.1, 0.1, 0);
 
-  glBegin(GL_TRIANGLES);
+  glBindTexture(GL_TEXTURE_2D,texture[4]);
 
+  glBegin(GL_TRIANGLES);
   //Draw the head tip
   rgb(158, 158, 158);
   GL_NORMAL(-0.5,+2, 0.4, +0.5,+2, 0.4, 0, +3, 0);
-  glVertex3f(-0.5,+2, 0.4);
-  glVertex3f(+0.5,+2, 0.4);
-  glVertex3f(0, +3, 0);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-0.5,+2, 0.4);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+0.5,+2, 0.4);
+  glTexCoord2f(0.5, 1.0);   glVertex3f(0, +3, 0);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   GL_NORMAL(+0.5, +2, -0.4, -0.5, +2, -0.4, 0, +3, 0);
-  glVertex3f(-0.5, +2, -0.4);
-  glVertex3f(+0.5, +2, -0.4);
-  glVertex3f(0, +3, 0);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-0.5, +2, -0.4);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+0.5, +2, -0.4);
+  glTexCoord2f(0.5, 1.0);   glVertex3f(0, +3, 0);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   GL_NORMAL(+0.5, +2, -0.4, +0.5, +2, +0.4, 0, +3, 0);
-  glVertex3f(+0.5, +2, 0.4);
-  glVertex3f(+0.5, +2, -0.4);
-  glVertex3f(0, +3, 0);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+0.5, +2, 0.4);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(+0.5, +2, -0.4);
+  glTexCoord2f(0.5, 1.0);   glVertex3f(0, +3, 0);
+  glEnd();
 
+  glBegin(GL_TRIANGLES);
   GL_NORMAL(-0.5, +2, -0.4, -0.5, +2, +0.4, 0, +3, 0);
-  glVertex3f(-0.5, +2, +0.4);
-  glVertex3f(-0.5, +2, -0.4);
-  glVertex3f(0, +3, 0);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(-0.5, +2, +0.4);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-0.5, +2, -0.4);
+  glTexCoord2f(0.5, 1.0);   glVertex3f(0, +3, 0);
+  glEnd();
+
 
   glColor3f(1,1,1);
+
+  glBegin(GL_TRIANGLES);
 
   //Draw the fan blades at the tip of the head
   glNormal3d(0, +1, 0);
@@ -513,6 +533,9 @@ void display()
    //  Undo previous transformations
    glLoadIdentity();
 
+   glEnable(GL_TEXTURE_2D);
+   glTexEnvi(GL_TEXTURE_ENV , GL_TEXTURE_ENV_MODE , GL_MODULATE);
+
    //  Perspective - set eye position
    if (mode)
    {
@@ -567,7 +590,10 @@ void display()
   // Draw water
   rgb(41,182,246);
   if(water)
+  {
+    glBindTexture(GL_TEXTURE_2D,texture[6]);
     draw_cube(0,0,-10, 30,30,10,0);
+  }
 
   //Draw the onjects
   draw_ship(0,0,0,1,1,1,0);
@@ -581,6 +607,8 @@ void display()
 
    //  Draw axes - no lighting from here on
    glDisable(GL_LIGHTING);
+   //  Switch off textures so it doesn't apply to the rest
+   glDisable(GL_TEXTURE_2D);
 
    if (axes)
    {
@@ -768,13 +796,26 @@ int main(int argc, char* argv[])
    //  Request double buffered, true color window with Z buffering at 600x600
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
    glutInitWindowSize(1000, 1000);
-   glutCreateWindow("Lighting - Scene in 3D");
+   glutCreateWindow("Sandeep Raj Kumbargeri - Homework 6 (Textures)");
+   glutFullScreen();
 
    //  Set callbacks
    glutDisplayFunc(display);
    glutReshapeFunc(reshape);
    glutSpecialFunc(special);
    glutKeyboardFunc(key);
+
+   //  Load textures
+   texture[0] = LoadTexBMP("textures/brick.bmp");
+   texture[1] = LoadTexBMP("textures/pattern.bmp");
+   texture[2] = LoadTexBMP("textures/sky.bmp");
+   texture[3] = LoadTexBMP("textures/smoke.bmp");
+   texture[4] = LoadTexBMP("textures/squares.bmp");
+   texture[5] = LoadTexBMP("textures/stars.bmp");
+   texture[6] = LoadTexBMP("textures/water.bmp");
+   texture[7] = LoadTexBMP("textures/wood.bmp");
+   //texture[2] = LoadTexBMP("water.bmp");
+
    glutIdleFunc(idle);
 
    //  Pass control to GLUT so it can interact with the user
