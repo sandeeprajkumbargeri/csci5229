@@ -56,7 +56,7 @@
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
 
 int axes = 0;       //  Display axes
-int mode = 0;       //  Projection mode
+int mode = 1;       //  Projection mode
 int move = 1;       //  Move light
 int th = 0;         //  Azimuth of view angle
 int ph = 0;         //  Elevation of view angle
@@ -86,7 +86,7 @@ float ylight  =   0;  // Elevation of light
 float z[65][65];       //  DEM data
 float zmin=+1e8;       //  DEM lowest location
 float zmax=-1e8;       //  DEM highest location
-float zmag=0.01;          //  DEM magnification
+float zmag=5;          //  DEM magnification
 
 unsigned int texture[10];
 
@@ -109,7 +109,7 @@ void ReadDEM(char* file)
 }
 
 
-void DEM(double tx, double ty, double tz, double sx, double sy, double sz, double rx, double ry, double rz)
+void DEM(double tx, double ty, double tz, double sx, double sy, double sz, double rx, double ry, double rz, float zmag_local)
 {
    int i,j;
    double z0 = (zmin+zmax)/2;
@@ -135,10 +135,10 @@ void DEM(double tx, double ty, double tz, double sx, double sy, double sz, doubl
         float x=16*i-512;
         float y=16*j-512;
         glBegin(GL_QUADS);
-        glTexCoord2f((i+0)/64.,(j+0)/64.); glVertex3d(x+ 0,y+ 0,zmag*(z[i+0][j+0]-z0));
-        glTexCoord2f((i+1)/64.,(j+0)/64.); glVertex3d(x+16,y+ 0,zmag*(z[i+1][j+0]-z0));
-        glTexCoord2f((i+1)/64.,(j+1)/64.); glVertex3d(x+16,y+16,zmag*(z[i+1][j+1]-z0));
-        glTexCoord2f((i+0)/64.,(j+1)/64.); glVertex3d(x+ 0,y+16,zmag*(z[i+0][j+1]-z0));
+        glTexCoord2f((i+0)/64.,(j+0)/64.); glVertex3d(x+ 0,y+ 0,zmag_local*(z[i+0][j+0]-z0));
+        glTexCoord2f((i+1)/64.,(j+0)/64.); glVertex3d(x+16,y+ 0,zmag_local*(z[i+1][j+0]-z0));
+        glTexCoord2f((i+1)/64.,(j+1)/64.); glVertex3d(x+16,y+16,zmag_local*(z[i+1][j+1]-z0));
+        glTexCoord2f((i+0)/64.,(j+1)/64.); glVertex3d(x+ 0,y+16,zmag_local*(z[i+0][j+1]-z0));
         glEnd();
      }
   //glDisable(GL_CULL_FACE);
@@ -657,10 +657,10 @@ void display()
     draw_cube(0,0,-16, 96,96,16,0);
   }
 
-  DEM(0, 64, 0, 0.125, 0.0625, 0.0625, 0, 0, 0);
-  DEM(64, 0, 0, 0.125, 0.0625, 0.0625, 0, 0, 270);
-  DEM(0, -64, 0, 0.125, 0.0625, 0.0625, 0, 0, 180);
-  DEM(-64, 0, 0, 0.125, 0.0625, 0.0625, 0, 0, 90);
+  DEM(0, 64, 8, 0.1875, 0.0625, 0.0625, 0, 0, 0, zmag + 6);
+  DEM(64, 0, 8, 0.1875, 0.0625, 0.0625, 0, 0, 270, zmag + 1);
+  DEM(0, -64, 8, 0.1875, 0.0625, 0.0625, 0, 0, 180, zmag - 2);
+  DEM(-64, 0, 8, 0.1875, 0.0625, 0.0625, 0, 0, 90, zmag + 3);
   //DEM(64, 64, 0, 0.0625, 0.0625, 0.0625, 0, 0, 0);
 
   //Draw the onjects
@@ -699,7 +699,7 @@ void display()
 
    //  Display parameters
    glWindowPos2i(5, 5);
-   Print("Angle = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off");
+   Print("Angle = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s   Zmag = %f", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag);
 
    //  Render the scene and make it visible
    glFlush();
@@ -737,10 +737,10 @@ void special(int key,int x,int y)
       ph -= 5;
    //  PageUp key - increase dim
    else if (key == GLUT_KEY_PAGE_UP)
-      dim -= 0.1;
+      dim -= 0.5;
    //  PageDown key - decrease dim
    else if (key == GLUT_KEY_PAGE_DOWN && dim>1)
-      dim += 0.1;
+      dim += 0.5;
     //  Smooth color model
     else if (key == GLUT_KEY_F1)
        smooth = 1-smooth;
@@ -795,9 +795,9 @@ void key(unsigned char ch,int x,int y)
        zh -= 1;
     //  Change field of view angle
     else if (ch == '-' && ch>1)
-       fov--;
-    else if (ch == '+' && ch<179)
        fov++;
+    else if ((ch == '+' || ch == '=') && ch<179)
+       fov--;
     //  Light elevation
     else if (ch=='[')
        ylight -= 0.1;
