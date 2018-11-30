@@ -89,8 +89,9 @@ float zmin=+1e8;       //  DEM lowest location
 float zmax=-1e8;       //  DEM highest location
 float zmag=0;          //  DEM magnification
 
-bool show_sky;
+bool show_sky, show_cockpit;
 int tex_skycube[3];
+int cockpit;
 
 int temp = 0;
 
@@ -98,6 +99,74 @@ unsigned int texture[10];
 
 //  Macro for sin & cos in degrees
 #define rgb(r,g,b) glColor3ub(r,g,b)
+
+/*
+ *  Draw the cockpit as an overlay
+ *  Must be called last
+ */
+void Cockpit()
+{
+   //  Screen edge
+   float w = asp>2 ? asp : 2;
+   //  Save transform attributes (Matrix Mode and Enabled Modes)
+   glPushAttrib(GL_TRANSFORM_BIT|GL_ENABLE_BIT);
+   //  Save projection matrix and set unit transform
+   glMatrixMode(GL_PROJECTION);
+   glPushMatrix();
+   glLoadIdentity();
+   glOrtho(-asp,+asp,-1,1,-1,1);
+   //  Save model view matrix and set to indentity
+   glMatrixMode(GL_MODELVIEW);
+   glPushMatrix();
+   glLoadIdentity();
+   //  Draw instrument panel with texture
+   glColor3f(1,1,1);
+   glEnable(GL_TEXTURE_2D);
+   glBindTexture(GL_TEXTURE_2D,cockpit);
+   glBegin(GL_QUADS);
+   glTexCoord2d(0,0);glVertex2f(-2,-1);
+   glTexCoord2d(1,0);glVertex2f(+2,-1);
+   glTexCoord2d(1,1);glVertex2f(+2, 0);
+   glTexCoord2d(0,1);glVertex2f(-2, 0);
+   glEnd();
+   glDisable(GL_TEXTURE_2D);
+   //  Draw the inside of the cockpit in grey
+   glColor3f(0.6,0.6,0.6);
+   glBegin(GL_QUADS);
+   //  Port
+   glVertex2f(-2,-1);
+   glVertex2f(-2,+1);
+   glVertex2f(-w,+1);
+   glVertex2f(-w,-1);
+   //  Starboard
+   glVertex2f(+2,-1);
+   glVertex2f(+2,+1);
+   glVertex2f(+w,+1);
+   glVertex2f(+w,-1);
+   //  Port overhead
+   glVertex2f(-2.00,+0.8);
+   glVertex2f(-2.00,+1);
+   glVertex2f(-0.03,+1);
+   glVertex2f(-0.03,+0.9);
+   //  Starboard overhead
+   glVertex2f(+2.00,+0.8);
+   glVertex2f(+2.00,+1);
+   glVertex2f(+0.03,+1);
+   glVertex2f(+0.03,+0.9);
+   //  Windshield divide
+   glVertex2f(-0.03,+1);
+   glVertex2f(+0.03,+1);
+   glVertex2f(+0.03,+0);
+   glVertex2f(-0.03,+0);
+   glEnd();
+   //  Reset model view matrix
+   glPopMatrix();
+   //  Reset projection matrix
+   glMatrixMode(GL_PROJECTION);
+   glPopMatrix();
+   //  Pop transform attributes (Matrix Mode and Enabled Modes)
+   glPopAttrib();
+}
 
 void ReadDEM(char* file)
 {
@@ -760,10 +829,16 @@ void display()
       glRasterPos3d(0.0,0.0,len);
       Print("Z");
    }
+   glDisable(GL_DEPTH_TEST);
 
-   //  Display parameters
-   glWindowPos2i(5, 5);
-   Print("Angle  = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %d", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
+   if(show_cockpit)
+    Cockpit();
+   else
+   {
+     //  Display parameters
+     glWindowPos2i(5, 5);
+     Print("Angle  = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %d", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
+   }
 
    //  Render the scene and make it visible
    glFlush();
@@ -868,7 +943,7 @@ void key(unsigned char ch,int x,int y)
     else if (ch==']')
        ylight += 0.1;
    else if ((ch == 'w') || (ch == 'W'))
-     water = !water;
+     show_sky = !show_sky;
     //  Ambient level
     else if (ch=='a' && ambient>0)
        ambient -= 5;
@@ -898,6 +973,8 @@ void key(unsigned char ch,int x,int y)
        zmag += 0.1;
     else if (ch == 'z' && zmag>-10)
        zmag -= 0.1;
+    else if (ch == 'q' || (ch == 'Q'))
+          show_cockpit = !show_cockpit;
 
     else if (ch == 'j')
         temp -= 1;
@@ -934,6 +1011,7 @@ void reshape(int width, int height)
 int main(int argc, char* argv[])
 {
    show_sky = true;
+   show_cockpit = false;
    //  Initialize GLUT
    glutInit(&argc, argv);
    //  Request double buffered, true color window with Z buffering at 600x600
@@ -963,6 +1041,10 @@ int main(int argc, char* argv[])
    //  Load skybox texture
  tex_skycube[0] = LoadTexBMP("textures/skycube_sides.bmp");
  tex_skycube[1] = LoadTexBMP("textures/skycube_topbottom.bmp");
+
+ cockpit = LoadTexBMP("textures/cockpit.bmp");
+
+
 
    //  Load DEM
    ReadDEM("textures/saddleback.dem");
