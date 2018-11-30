@@ -58,7 +58,7 @@
 
 int axes = 0;       //  Display axes
 int mode = 1;       //  Projection mode
-int move = 1;       //  Move light
+int move = 0;       //  Move light
 int th = 0;         //  Azimuth of view angle
 int ph = 0;         //  Elevation of view angle
 int fov = 55;       //  Field of view (for perspective)
@@ -91,11 +91,37 @@ float zmag=0;          //  DEM magnification
 
 bool show_sky, show_cockpit;
 int tex_skycube[3];
+int tex_ufo[3];
 int cockpit;
 
 int temp = 0;
 
 unsigned int texture[10];
+unsigned int tex_pb_screen;
+
+int    fly=1;    //  Animated flight
+double roll=0;   //  Roll angle
+double pitch=0;  //  Pitch angle
+double yaw=0;    //  Yaw angle
+int    pwr=100;  //  Power setting (%)
+double X  = 0;   //  Location
+double Y  = 0;   //  Location
+double Z  = 0;   //  Location
+double Dx = 1;   //  Direction
+double Dy = 0;   //  Direction
+double Dz = 0;   //  Direction
+double Sx = 1;   //  Sideways
+double Sy = 0;   //  Sideways
+double Sz = 0;   //  Sideways
+double Ux = 1;   //  Up
+double Uy = 0;   //  Up
+double Uz = 0;   //  Up
+double Ox = 0;   //  LookAt
+double Oy = 0;   //  LookAt
+double Oz = 0;   //  LookAt
+double Ex = 1;   //  Eye
+double Ey = 1;   //  Eye
+double Ez = 1;   //  Eye
 
 //  Macro for sin & cos in degrees
 #define rgb(r,g,b) glColor3ub(r,g,b)
@@ -498,11 +524,14 @@ static void draw_ship(double x, double y, double z, double dx, double dy, double
 /*
  *  Draw vertex in polar coordinates
  */
-static void Vertex(double th, double ph)
+static void Vertex(int th,int ph)
 {
-   glColor3f(Cos(th)*Cos(th), Sin(ph)*Sin(ph), Sin(th)*Sin(th));
-   glNormal3d(Sin(th)*Cos(ph), Sin(ph), Cos(th)*Cos(ph));
-   glVertex3d(Sin(th)*Cos(ph), Sin(ph), Cos(th)*Cos(ph));
+   double x = -Sin(th)*Cos(ph);
+   double y =  Cos(th)*Cos(ph);
+   double z =          Sin(ph);
+   glNormal3d(x,y,z);
+   glTexCoord2d(th/360.0,ph/180.0+0.5);
+   glVertex3d(x,y,z);
 }
 
 /*
@@ -569,6 +598,9 @@ static void draw_lightball(double x,double y,double z,double r)
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
    glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
+
+   glEnable(GL_TEXTURE_2D);
+   glBindTexture(GL_TEXTURE_2D, tex_ufo[0]);
    //  Bands of latitude
    for (ph=-90;ph<90;ph+=inc)
    {
@@ -582,15 +614,45 @@ static void draw_lightball(double x,double y,double z,double r)
    }
    //  Undo transofrmations
    glPopMatrix();
+
+   //  Save transformation
+   glPushMatrix();
+   //  Offset, scale and rotate
+   glTranslated(x,y,z);
+   glScaled(2*r,r/5,2*r);
+   //  White ball
+   glColor3f(1,1,1);
+   glMaterialf(GL_FRONT,GL_SHININESS,shiny);
+   glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
+   glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
+
+   glBindTexture(GL_TEXTURE_2D, tex_ufo[1]);
+   //  Bands of latitude
+   for (ph=-90;ph<90;ph+=inc)
+   {
+      glBegin(GL_QUAD_STRIP);
+      for (th=0;th<=360;th+=2*inc)
+      {
+         Vertex(th,ph);
+         Vertex(th,ph+inc);
+      }
+      glEnd();
+   }
+   //  Undo transofrmations
+   glPopMatrix();
+
 }
 
-static void draw_airplane(double x, double y, double z, double dx, double dy, double dz, double th)
+static void draw_airplane(double x, double y, double z, double dx, double dy, double dz)
 {
   //  Save transformation
   glPushMatrix();
   //  Offset
   glTranslated(x, y, z);
-  glRotated(270, 1, 0, 0);
+  glRotated(yaw,0,1,0);
+  glRotated(pitch,0,0,1);
+  glRotated(roll,1,0,0);
+  //glRotated(270, 1, 0, 0);
   //glRotated(th, 0, 1, 0);
   glScaled(dx, dy, dz);
 
@@ -708,8 +770,84 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glVertex3f(+1, +3, +0.6);
 
   glEnd();
-  glPopMatrix();glRotated(90, 1, 0, 0);
+
+  glPopMatrix();
 }
+
+static void DrawFlight(double x0,double y0,double z0,
+                       double dx,double dy,double dz,
+                       double ux,double uy,double uz)
+{
+   //  Unit vector in direction of flght
+   double D0 = sqrt(dx*dx+dy*dy+dz*dz);
+   double X0 = dx/D0;
+   double Y0 = dy/D0;
+   double Z0 = dz/D0;
+   //  Unit vector in "up" direction
+   double D1 = sqrt(ux*ux+uy*uy+uz*uz);
+   double X1 = ux/D1;
+   double Y1 = uy/D1;
+   double Z1 = uz/D1;
+   //  Cross product gives the third vector
+   double X2 = Y0*Z1-Y1*Z0;
+   double Y2 = Z0*X1-Z1*X0;
+   double Z2 = X0*Y1-X1*Y0;
+   //  Rotation matrix
+   double M[16] = {X0,Y0,Z0,0 , X1,Y1,Z1,0 , X2,Y2,Z2,0 , 0,0,0,1};
+
+   //  Save current transforms
+   glPushMatrix();
+   //  Offset and rotate
+   glTranslated(x0,y0,z0);
+   glMultMatrixd(M);
+
+   //glPushMatrix();
+   //glTranslated(X[i],Y[i],Z[i]);
+   draw_airplane(x0,y0,z0,1,1,1);
+
+   //  Undo transformations
+   glPopMatrix();
+}
+
+/*
+ *  Generates a polygon screen and plays multiple frames on it.
+ */
+static void playback_screen(double tx, double ty, double tz,
+                            double sx, double sy,
+                            double rx, double ry, double rz,
+                            const char * path, unsigned int count)
+{
+  static unsigned int current = 0;
+  unsigned int path_length = strlen(path);
+  char full_path[path_length+10];
+  sprintf(full_path, "%s-%u.bmp", path, current);
+
+  tex_pb_screen = LoadTexBMP(full_path);
+  glBindTexture(GL_TEXTURE_2D, tex_pb_screen);
+
+  glPushMatrix();
+  glTranslated(tx, ty, tz);
+  glRotated(ry, 0, 1, 0);
+  glRotated(rz, 0, 0, 1);
+  glRotated(rx, 1, 0, 0);
+  glScaled(sx, sy, 1);
+
+  glBegin(GL_QUADS);
+  //  Front
+  glNormal3f( 0, 0, +1);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-1, -1, +1);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+1, -1, +1);
+  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, +1);
+  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, +1, +1);
+  glEnd();
+
+  glPopMatrix();
+
+  current++;
+  if(current == count)
+    current = 0;
+}
+
 
 /*
  *  OpenGL (GLUT) calls this routine to display the scene
@@ -724,11 +862,16 @@ void display()
    //  Undo previous transformations
    glLoadIdentity();
 
+   gluLookAt(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
+
    glEnable(GL_TEXTURE_2D);
    glTexEnvi(GL_TEXTURE_ENV , GL_TEXTURE_ENV_MODE , GL_MODULATE);
 
+  //  Draw Sky Cube
+   if(show_sky) draw_skycube(64);
+
    //  Perspective - set eye position
-   if (mode)
+   /*if (mode)
    {
       double Ex = -0.5*(dim/4)*Sin(th)*Cos(ph);
       double Ey = +0.5*(dim/4)        *Sin(ph);
@@ -741,7 +884,7 @@ void display()
    {
       glRotatef(ph, 1, 0, 0);
       glRotatef(th, 0, 1, 0);
-   }
+   }*/
 
    //  Flat or smooth shading
    glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
@@ -757,7 +900,7 @@ void display()
         float Position[]  = {distance*Cos(zh),distance*Sin(zh),ylight,1.0};
         //  Draw light position as ball (still no lighting here)
         glColor3f(1,1,1);
-        draw_lightball(Position[0],Position[1],Position[2] , 0.2);
+        draw_lightball(Position[0],Position[1],Position[2] , 2);
         //  OpenGL should normalize normal vectors
         glEnable(GL_NORMALIZE);
         //  Enable lighting
@@ -778,16 +921,8 @@ void display()
    else
      glDisable(GL_LIGHTING);
 
-  // Draw water
-  //rgb(41,182,246);
-  // if(water)
-  // {
-  //   glBindTexture(GL_TEXTURE_2D,texture[6]);
-  //   draw_cube(0,0,-16, 96,96,16,0);
-  // }
-
-  //  Draw Sky Cube
-   if(show_sky) draw_skycube(64);
+   //DrawFlight(X,Y,Z , Dx,Dy,Dz , Ux,Uy,Uz);
+  playback_screen(0, 0, 50, 2, 1, 0, 0, 0, "textures/playback/playback", 132);
 
    DEM(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, 6);
    DEM(40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 90, 3);
@@ -797,11 +932,11 @@ void display()
   //DEM(64, 64, 0, 0.0625, 0.0625, 0.0625, 0, 0, 0);
 
   //Draw the onjects
-  draw_ship(0,0,0,1,1,1,0);
-  draw_ship(5,0,-10,1,2,2,0);
+  //draw_ship(0,0,0,1,1,1,0);
+  //draw_ship(5,0,-10,1,2,2,0);
 
-  draw_airplane(5,5,8,0.5,0.5,0.5,30);
-  draw_airplane(-1,3,-1,1,1,1,330);
+  draw_airplane(0,0,0,0.5,0.5,0.5);
+  //draw_airplane(-1,3,-1,1,1,1,330);
 
    //  Draw axes
    glColor3f(1,1,1);
@@ -836,13 +971,114 @@ void display()
    else
    {
      //  Display parameters
+     glWindowPos2i(5, 25);
+     Print("Angle  = %d %d   Dim = %1f\n   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %d   ", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
      glWindowPos2i(5, 5);
-     Print("Angle  = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %d", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
+     Print("X = %lf   Y = %lf   Z = %lf   Ex = %lf   Ey = %lf   Ez = %lf   Yaw = %lf   Pitch = %lf   Roll = %lf", X, Y, Z, Ex, Ey, Ez, yaw, pitch, roll);
    }
 
    //  Render the scene and make it visible
    glFlush();
    glutSwapBuffers();
+}
+
+/*
+ *  GLUT calls this routine every 50ms
+ */
+void timer(int toggle)
+{
+   //  Toggle movement
+   if (toggle>0)
+      move = !move;
+   //  Increment light position
+   else
+      zh = (zh+5)%360;
+   //  Animate flight using Lorenz transform
+   if (fly)
+   {
+      //  Lorenz integration parameters
+      double dt = 0.003;
+      double s = -1.7;
+      double b = 2.66;
+      double r = 50;
+      //  Old vectors
+      double D,Nx,Ny,Nz;
+      double Dx0 = Dx;
+      double Dy0 = Dy;
+      double Dz0 = Dz;
+      double Ux0 = Ux;
+      double Uy0 = Uy;
+      double Uz0 = Uz;
+      //  Fix degenerate case
+      if (X==0 && Y==0 && Z==0) Y = Z = 40;
+      //  Update position
+      Dx = s*(Y-X);
+      Dy = X*(r-Z)-Y;
+      Dz = X*Y - b*Z;
+      X += dt*Dx;
+      Y += dt*Dy;
+      Z += dt*Dz;
+      //  Normalize DX
+      D = sqrt(Dx*Dx+Dy*Dy+Dz*Dz);
+      Dx /= D;
+      Dy /= D;
+      Dz /= D;
+      //  Calculate sideways
+      Sx  = Dy0*Dz-Dz0*Dy;
+      Sy  = Dz0*Dx-Dx0*Dz;
+      Sz  = Dx0*Dy-Dy0*Dx;
+      //  Calculate Up
+      Ux  = Dz*Sy - Dy*Sz;
+      Uy  = Dx*Sz - Dz*Sx;
+      Uz  = Dy*Sx - Dx*Sy;
+      //  Normalize Up
+      D = sqrt(Ux*Ux+Uy*Uy+Uz*Uz);
+      Ux /= D;
+      Uy /= D;
+      Uz /= D;
+      //  Eye and lookat position
+      Ex = X-7*Dx;
+      Ey = Y-7*Dy;
+      Ez = Z-7*Dz;
+      Ox = X;
+      Oy = Y;
+      Oz = Z;
+      //  Next DX
+      Nx = s*(Y-X);
+      Ny = X*(r-Z)-Y;
+      Nz = X*Y - b*Z;
+      //  Pitch angle
+      pitch = 180*acos(Dx*Dx0+Dy*Dy0+Dz*Dz0);
+      //  Roll angle
+      D = (Ux*Ux0+Uy*Uy0+Uz*Uz0) / (Dx*Dx0+Dy*Dy0+Dz*Dz0);
+      if (D>1) D = 1;
+      roll = (Nx*Sx+Ny*Sy+Nz*Sz>0?+1:-1)*960*acos(D);
+      //  Yaw angle
+      yaw = 0;
+      //  Power setting (0-1)
+      if (Dy>0.8)
+         pwr = 100;
+      else if (Dy>-0.2)
+	 pwr = 20+100*Dy;
+      else
+	 pwr = 0;
+   }
+   //  Static Roll/Pitch/Yaw
+   else
+   {
+      Ex = -2*dim*Sin(th)*Cos(ph);
+      Ey = +2*dim        *Sin(ph);
+      Ez = +2*dim*Cos(th)*Cos(ph);
+      Ox = Oy = Oz = 0;
+      X = Y = Z = 0;
+      Dx = 1; Dy = 0; Dz = 0;
+      Ux = 0; Uy = Cos(ph); Uz = 0;
+   }
+   //  Set timer to go again
+   if (move && toggle>=0)
+    glutTimerFunc(50,timer,0);
+   //  Tell GLUT it is necessary to redisplay the scene
+   glutPostRedisplay();
 }
 
 /*
@@ -899,9 +1135,11 @@ void special(int key,int x,int y)
    ph %= 360;
    //  Update projection
    Project();
+   //  Update state
+   timer(-1);
 
    //  Tell GLUT it is necessary to redisplay the scene
-   glutPostRedisplay();
+   //glutPostRedisplay();
 }
 
 /*
@@ -915,6 +1153,9 @@ void key(unsigned char ch,int x,int y)
     //  Reset view angle
     else if (ch == '0')
        th = ph = 0;
+    //  Fly
+    else if (ch == 'f' || ch == 'F')
+      dim = (fly = !fly) ? 50 : 30;
     //  Toggle axes
     else if (ch == 'x' || ch == 'X')
        axes = 1-axes;
@@ -987,9 +1228,11 @@ void key(unsigned char ch,int x,int y)
     //  Reproject
     Project(mode?fov:0,asp,dim);
     //  Animate if requested
-    glutIdleFunc(move?idle:NULL);
+    //glutIdleFunc(move?idle:NULL);
     //  Tell GLUT it is necessary to redisplay the scene
-    glutPostRedisplay();
+    //  Update state
+    timer(-1);
+    //glutPostRedisplay();
 }
 
 /*
@@ -1018,7 +1261,7 @@ int main(int argc, char* argv[])
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
    glutInitWindowSize(1000, 1000);
    glutCreateWindow("Sandeep Raj Kumbargeri - Homework 6 (Textures)");
-   glutFullScreen();
+   //glutFullScreen();
 
    //  Set callbacks
    glutDisplayFunc(display);
@@ -1043,15 +1286,17 @@ int main(int argc, char* argv[])
  tex_skycube[1] = LoadTexBMP("textures/skycube_topbottom.bmp");
 
  cockpit = LoadTexBMP("textures/cockpit.bmp");
+ tex_ufo[0] = LoadTexBMP("textures/ufo1.bmp");
+ tex_ufo[1] = LoadTexBMP("textures/ufo2.bmp");
 
+//  Load DEM
+ReadDEM("textures/saddleback.dem");
 
-
-   //  Load DEM
-   ReadDEM("textures/saddleback.dem");
+   timer(1);
 
    //texture[2] = LoadTexBMP("water.bmp");
 
-   glutIdleFunc(idle);
+   //glutIdleFunc(idle);
 
    //  Pass control to GLUT so it can interact with the user
    glutMainLoop();
