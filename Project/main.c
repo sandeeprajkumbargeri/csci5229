@@ -71,7 +71,7 @@ int light = 1;      //  Lighting
 
 // Light values
 int one       =   1;  // Unit value
-int distance  =   5;  // Light distance
+int distance  =   20;  // Light distance
 int inc       =  10;  // Ball increment
 int smooth    =   1;  // Smooth/Flat shading
 int local     =   0;  // Local Viewer Model
@@ -89,7 +89,7 @@ float zmin=+1e8;       //  DEM lowest location
 float zmax=-1e8;       //  DEM highest location
 float zmag=0;          //  DEM magnification
 
-bool show_sky, show_cockpit;
+bool show_sky, show_cockpit, show_pb_screen;
 int tex_skycube[3];
 int tex_ufo[3];
 int cockpit;
@@ -210,7 +210,7 @@ void ReadDEM(char* file)
 }
 
 
-void DEM(double tx, double ty, double tz, double sx, double sy, double sz, double rx, double ry, double rz, float zmag_local)
+void draw_mountains(double tx, double ty, double tz, double sx, double sy, double sz, double rx, double ry, double rz, float zmag_local)
 {
    int i,j;
    double z0 = (zmin+zmax)/2;
@@ -219,9 +219,9 @@ void DEM(double tx, double ty, double tz, double sx, double sy, double sz, doubl
   glPushMatrix();
 
   glTranslated(tx, ty, tz);
-   glRotated(rx, 1, 0, 0);
-   glRotated(ry, 0, 1, 0);
-   glRotated(rz, 0, 0, 1);
+  glRotated(rx, 1, 0, 0);
+  glRotated(ry, 0, 1, 0);
+  glRotated(rz, 0, 0, 1);
   glScaled(sx, sy, sz);
 
   //glScaled(0.0625, 0.0625, 0.0625);
@@ -405,14 +405,16 @@ static void draw_cube(double x, double y, double z, double dx, double dy ,double
    glPopMatrix();
 }
 
-static void draw_ship(double x, double y, double z, double dx, double dy, double dz, double th)
+static void draw_ship(double x, double y, double z, double dx, double dy, double dz, double rx, double ry, double rz)
 {
   //  Save transformation
   glPushMatrix();
   //  Offset
   glTranslated(x,y,z);
+  glRotated(rx, 1, 0, 0);
+  glRotated(ry, 0, 1, 0);
+  glRotated(rz, 0, 0, 1);
   glRotated(270, 1, 0, 0);
-  //glRotated(th, 0, 1, 0);
   glScaled(dx,dy,dz);
 
 
@@ -592,6 +594,7 @@ static void draw_lightball(double x,double y,double z,double r)
    glPushMatrix();
    //  Offset, scale and rotate
    glTranslated(x,y,z);
+   //glRotated(180, 0, 1, 0);
    glScaled(r,r,r);
    //  White ball
    glColor3f(1,1,1);
@@ -619,6 +622,7 @@ static void draw_lightball(double x,double y,double z,double r)
    glPushMatrix();
    //  Offset, scale and rotate
    glTranslated(x,y,z);
+   //glRotated(180, 0, 1, 1);
    glScaled(2*r,r/5,2*r);
    //  White ball
    glColor3f(1,1,1);
@@ -897,7 +901,7 @@ void display()
         float Diffuse[]   = {0.01*diffuse ,0.01*diffuse ,0.01*diffuse ,1.0};
         float Specular[]  = {0.01*specular,0.01*specular,0.01*specular,1.0};
         //  Light position
-        float Position[]  = {distance*Cos(zh),distance*Sin(zh),ylight,1.0};
+        float Position[]  = {distance*Cos(zh),ylight, distance*Sin(zh),1.0};
         //  Draw light position as ball (still no lighting here)
         glColor3f(1,1,1);
         draw_lightball(Position[0],Position[1],Position[2] , 2);
@@ -922,18 +926,17 @@ void display()
      glDisable(GL_LIGHTING);
 
    //DrawFlight(X,Y,Z , Dx,Dy,Dz , Ux,Uy,Uz);
-  playback_screen(0, 0, 50, 2, 1, 0, 0, 0, "textures/playback/playback", 132);
+  if(show_pb_screen)
+    playback_screen(0, 0, 50, 2, 1, 0, 0, 0, "textures/playback/playback", 132);
 
-   DEM(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, 6);
-   DEM(40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 90, 3);
-   DEM(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, 6);
-   DEM(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, 3);
-   //DEM(-64, 8, 0, 0.1875, 0.0625, 0.0625, 90, 0, 0, zmag + 3);
-  //DEM(64, 64, 0, 0.0625, 0.0625, 0.0625, 0, 0, 0);
+   draw_mountains(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, 10);
+   draw_mountains(40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 90, 4);
+   draw_mountains(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, 7);
+   draw_mountains(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, 3);
 
   //Draw the onjects
-  //draw_ship(0,0,0,1,1,1,0);
-  //draw_ship(5,0,-10,1,2,2,0);
+  draw_ship(0,-64,-10,4,4,4,0,90,0);
+  draw_ship(0,-64,+10,8,8,8,0,90,0);
 
   draw_airplane(0,0,0,0.5,0.5,0.5);
   //draw_airplane(-1,3,-1,1,1,1,330);
@@ -1082,7 +1085,7 @@ void timer(int toggle)
 }
 
 /*
- *  GLUT calls this routine when the window is resized
+ *  GLUT calls this routine when the wfree(image);indow is resized
  */
 void idle()
 {
@@ -1216,6 +1219,8 @@ void key(unsigned char ch,int x,int y)
        zmag -= 0.1;
     else if (ch == 'q' || (ch == 'Q'))
           show_cockpit = !show_cockpit;
+    else if (ch == 'b' || (ch == 'B'))
+          show_pb_screen = !show_pb_screen;
 
     else if (ch == 'j')
         temp -= 1;
@@ -1255,6 +1260,7 @@ int main(int argc, char* argv[])
 {
    show_sky = true;
    show_cockpit = false;
+   show_pb_screen = true;
    //  Initialize GLUT
    glutInit(&argc, argv);
    //  Request double buffered, true color window with Z buffering at 600x600
