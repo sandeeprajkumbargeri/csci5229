@@ -52,6 +52,7 @@
 
 
 #include "CSCIx229.h"
+#include <stdbool.h>
 
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
 
@@ -62,7 +63,7 @@ int th = 0;         //  Azimuth of view angle
 int ph = 0;         //  Elevation of view angle
 int fov = 55;       //  Field of view (for perspective)
 double asp = 1;     //  Aspect ratio
-double dim = 100.0;   //  Size of world
+double dim = 500.0;   //  Size of world
 
 bool water = true;
 
@@ -86,7 +87,12 @@ float ylight  =   0;  // Elevation of light
 float z[65][65];       //  DEM data
 float zmin=+1e8;       //  DEM lowest location
 float zmax=-1e8;       //  DEM highest location
-float zmag=5;          //  DEM magnification
+float zmag=0;          //  DEM magnification
+
+bool show_sky;
+int tex_skycube[3];
+
+int temp = 0;
 
 unsigned int texture[10];
 
@@ -118,9 +124,9 @@ void DEM(double tx, double ty, double tz, double sx, double sy, double sz, doubl
   glPushMatrix();
 
   glTranslated(tx, ty, tz);
-  glRotated(rx, 1, 0, 0);
-  glRotated(ry, 0, 1, 0);
-  glRotated(rz, 0, 0, 1);
+   glRotated(rx, 1, 0, 0);
+   glRotated(ry, 0, 1, 0);
+   glRotated(rz, 0, 0, 1);
   glScaled(sx, sy, sz);
 
   //glScaled(0.0625, 0.0625, 0.0625);
@@ -147,6 +153,58 @@ void DEM(double tx, double ty, double tz, double sx, double sy, double sz, doubl
   glPopMatrix();
 }
 
+/*
+ *  Draw sky Cube
+ */
+static void draw_skycube(double D)
+{
+  glPushMatrix();
+   glColor3f(1,1,1);
+   //glEnable(GL_TEXTURE_2D);
+
+   //  Sides
+   glBindTexture(GL_TEXTURE_2D,tex_skycube[0]);
+   glBegin(GL_QUADS);
+   glTexCoord2f(0.00,0); glVertex3f(-D,-D,-D);
+   glTexCoord2f(0.25,0); glVertex3f(+D,-D,-D);
+   glTexCoord2f(0.25,1); glVertex3f(+D,+D,-D);
+   glTexCoord2f(0.00,1); glVertex3f(-D,+D,-D);
+
+   glTexCoord2f(0.25,0); glVertex3f(+D,-D,-D);
+   glTexCoord2f(0.50,0); glVertex3f(+D,-D,+D);
+   glTexCoord2f(0.50,1); glVertex3f(+D,+D,+D);
+   glTexCoord2f(0.25,1); glVertex3f(+D,+D,-D);
+
+   glTexCoord2f(0.50,0); glVertex3f(+D,-D,+D);
+   glTexCoord2f(0.75,0); glVertex3f(-D,-D,+D);
+   glTexCoord2f(0.75,1); glVertex3f(-D,+D,+D);
+   glTexCoord2f(0.50,1); glVertex3f(+D,+D,+D);
+
+   glTexCoord2f(0.75,0); glVertex3f(-D,-D,+D);
+   glTexCoord2f(1.00,0); glVertex3f(-D,-D,-D);
+   glTexCoord2f(1.00,1); glVertex3f(-D,+D,-D);
+   glTexCoord2f(0.75,1); glVertex3f(-D,+D,+D);
+   glEnd();
+
+   //  Top and bottom
+   glBindTexture(GL_TEXTURE_2D,tex_skycube[1]);
+   glBegin(GL_QUADS);
+   glTexCoord2f(0.0,0); glVertex3f(+D,+D,-D);
+   glTexCoord2f(0.5,0); glVertex3f(+D,+D,+D);
+   glTexCoord2f(0.5,1); glVertex3f(-D,+D,+D);
+   glTexCoord2f(0.0,1); glVertex3f(-D,+D,-D);
+
+   glTexCoord2f(1.0,1); glVertex3f(-D,-D,+D);
+   glTexCoord2f(0.5,1); glVertex3f(+D,-D,+D);
+   glTexCoord2f(0.5,0); glVertex3f(+D,-D,-D);
+   glTexCoord2f(1.0,0); glVertex3f(-D,-D,-D);
+   glEnd();
+
+   glPopMatrix();
+
+   //glDisable(GL_TEXTURE_2D);
+}
+
 
 
 /*
@@ -160,7 +218,7 @@ void Project()
    glLoadIdentity();
    //  Perspective transformation
    if (mode)
-      gluPerspective(fov, asp, dim/4, 4*dim);
+      gluPerspective(fov, asp, dim/16, 16*dim);
    //  Orthogonal projection
    else
       glOrtho(-asp*dim, +asp*dim, -dim, +dim, -dim, +dim);
@@ -258,7 +316,8 @@ static void draw_ship(double x, double y, double z, double dx, double dy, double
   glPushMatrix();
   //  Offset
   glTranslated(x,y,z);
-  glRotated(th, 0, 1, 0);
+  glRotated(270, 1, 0, 0);
+  //glRotated(th, 0, 1, 0);
   glScaled(dx,dy,dz);
 
 
@@ -462,7 +521,8 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glPushMatrix();
   //  Offset
   glTranslated(x, y, z);
-  glRotated(th, 0, 1, 0);
+  glRotated(270, 1, 0, 0);
+  //glRotated(th, 0, 1, 0);
   glScaled(dx, dy, dz);
 
   //Draw the trunk
@@ -579,7 +639,7 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glVertex3f(+1, +3, +0.6);
 
   glEnd();
-  glPopMatrix();
+  glPopMatrix();glRotated(90, 1, 0, 0);
 }
 
 /*
@@ -601,9 +661,9 @@ void display()
    //  Perspective - set eye position
    if (mode)
    {
-      double Ex = -2*dim*Sin(th)*Cos(ph);
-      double Ey = +2*dim        *Sin(ph);
-      double Ez = +2*dim*Cos(th)*Cos(ph);
+      double Ex = -0.5*(dim/4)*Sin(th)*Cos(ph);
+      double Ey = +0.5*(dim/4)        *Sin(ph);
+      double Ez = +0.5*(dim/4)*Cos(th)*Cos(ph);
       gluLookAt(Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
    }
 
@@ -650,32 +710,36 @@ void display()
      glDisable(GL_LIGHTING);
 
   // Draw water
-  rgb(41,182,246);
-  if(water)
-  {
-    glBindTexture(GL_TEXTURE_2D,texture[6]);
-    draw_cube(0,0,-16, 96,96,16,0);
-  }
+  //rgb(41,182,246);
+  // if(water)
+  // {
+  //   glBindTexture(GL_TEXTURE_2D,texture[6]);
+  //   draw_cube(0,0,-16, 96,96,16,0);
+  // }
 
-  DEM(0, 64, 8, 0.1875, 0.0625, 0.0625, 0, 0, 0, zmag + 6);
-  DEM(64, 0, 8, 0.1875, 0.0625, 0.0625, 0, 0, 270, zmag + 1);
-  DEM(0, -64, 8, 0.1875, 0.0625, 0.0625, 0, 0, 180, zmag - 2);
-  DEM(-64, 0, 8, 0.1875, 0.0625, 0.0625, 0, 0, 90, zmag + 3);
+  //  Draw Sky Cube
+   if(show_sky) draw_skycube(64);
+
+   DEM(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, 6);
+   DEM(40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 90, 3);
+   DEM(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, 6);
+   DEM(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, 3);
+   //DEM(-64, 8, 0, 0.1875, 0.0625, 0.0625, 90, 0, 0, zmag + 3);
   //DEM(64, 64, 0, 0.0625, 0.0625, 0.0625, 0, 0, 0);
 
   //Draw the onjects
   draw_ship(0,0,0,1,1,1,0);
-  draw_ship(5,10,0,1,2,2,0);
+  draw_ship(5,0,-10,1,2,2,0);
 
   draw_airplane(5,5,8,0.5,0.5,0.5,30);
-  draw_airplane(-1,-1,3,1,1,1,330);
+  draw_airplane(-1,3,-1,1,1,1,330);
 
    //  Draw axes
    glColor3f(1,1,1);
 
    //  Draw axes - no lighting from here on
    glDisable(GL_LIGHTING);
-   //  Switch off textures so it doesn't apply to the rest
+   //  Switch off textures so it doesn't apply to -48the rest
    glDisable(GL_TEXTURE_2D);
 
    if (axes)
@@ -699,7 +763,7 @@ void display()
 
    //  Display parameters
    glWindowPos2i(5, 5);
-   Print("Angle = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s   Zmag = %f", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag);
+   Print("Angle  = %d %d   Dim = %1f   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %d", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
 
    //  Render the scene and make it visible
    glFlush();
@@ -832,8 +896,14 @@ void key(unsigned char ch,int x,int y)
        shininess += 1;
     else if (ch == 'Z')
        zmag += 0.1;
-    else if (ch == 'z' && zmag>1)
+    else if (ch == 'z' && zmag>-10)
        zmag -= 0.1;
+
+    else if (ch == 'j')
+        temp -= 1;
+
+    else if (ch == 'k')
+        temp += 1;
 
     //  Translate shininess power to value (-1 => 0)
     shiny = shininess<0 ? 0 : pow(2.0,shininess);
@@ -863,6 +933,7 @@ void reshape(int width, int height)
  */
 int main(int argc, char* argv[])
 {
+   show_sky = true;
    //  Initialize GLUT
    glutInit(&argc, argv);
    //  Request double buffered, true color window with Z buffering at 600x600
@@ -887,7 +958,12 @@ int main(int argc, char* argv[])
    texture[6] = LoadTexBMP("textures/water.bmp");
    texture[7] = LoadTexBMP("textures/wood.bmp");
 
-   texture[8] = LoadTexBMP("textures/saddleback.bmp");
+   texture[8] = LoadTexBMP("textures/rockies.bmp");
+
+   //  Load skybox texture
+ tex_skycube[0] = LoadTexBMP("textures/skycube_sides.bmp");
+ tex_skycube[1] = LoadTexBMP("textures/skycube_topbottom.bmp");
+
    //  Load DEM
    ReadDEM("textures/saddleback.dem");
 
