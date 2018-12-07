@@ -78,6 +78,9 @@ Use arrow keys to change viewing angles
 #include <stdbool.h>
 
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
+//  Macro for sin & cos in degrees
+#define rgb(r,g,b) glColor3ub(r,g,b)
+#define PI 3.1415926
 
 int axes = 0;       //  Display axes
 int mode = 1;       //  Projection mode
@@ -86,7 +89,7 @@ int th = 0;         //  Azimuth of view angle
 int ph = 0;         //  Elevation of view angle
 int fov = 55;       //  Field of view (for perspective)
 double asp = 1;     //  Aspect ratio
-double dim = 500.0;   //  Size of world
+double dim = 50.0;   //  Size of world
 
 bool water = true;
 
@@ -110,17 +113,17 @@ float ylight  =   0;  // Elevation of light
 float z[65][65];       //  DEM data
 float zmin=+1e8;       //  DEM lowest location
 float zmax=-1e8;       //  DEM highest location
-float zmag=0;          //  DEM magnification
+float zmag=5;          //  DEM magnification
 
 bool show_sky, show_cockpit, show_pb_screen;
 int tex_skycube[3];
 int tex_ufo[3];
 int cockpit;
 
-int temp = 0;
+float temp = 0;
 
 unsigned int texture[10];
-unsigned int tex_pb_screen;
+//unsigned int tex_pb_screen;
 
 int    fly=1;    //  Animated flight
 double roll=0;   //  Roll angle
@@ -146,8 +149,80 @@ double Ex = 1;   //  Eye
 double Ey = 1;   //  Eye
 double Ez = 1;   //  Eye
 
-//  Macro for sin & cos in degrees
-#define rgb(r,g,b) glColor3ub(r,g,b)
+int lm = 0;
+double flag[64][64][3];
+unsigned int tex_flag = 0;
+
+typedef struct {float x,y,z;} Point;
+
+static void draw_cube(double x, double y, double z, double dx, double dy ,double dz, double th);
+static void draw_cylinder(float x, float y, float z, float th, float ph, float R,float H, unsigned int slices);
+static void draw_sphere(double x, double y, double z, double dx, double dy, double dz);
+
+static void init_flag(void)
+{
+    for (int x=0; x<64; x++) {
+        for (int y=0; y<64; y++) {
+			flag[x][y][0] = (double) (x/3.0);
+			flag[x][y][1] = (double) (y/5.0);
+			flag[x][y][2] = (double) (sin((((x*45)/8.0)/360.0)*2.0*PI));
+		}
+	}
+}
+
+void draw_flag(double tx, double ty, double tz, double sx, double sy, double sz, double rx, double ry, double rz)
+{
+  unsigned int x, y;
+  double state;
+  static bool boolInit = true;
+
+  if(boolInit == true)
+  {
+    init_flag();
+    boolInit = false;
+  }
+
+  glBindTexture(GL_TEXTURE_2D, texture[9]);
+  draw_cylinder(tx-0.4, ty-2.25, tz, 0, 90, 0.8, 15, 8);
+  draw_sphere(tx-0.4, ty+12.8, tz, 0.8, 1, 0.8);
+
+  glPushMatrix();
+
+  glTranslated(tx, ty, tz);
+  glRotated(rx, 1, 0, 0);
+  glRotated(ry, 0, 1, 0);
+  glRotated(rz, 0, 0, 1);
+  glScaled(sx, sy, sz);
+
+	glColor3f(1, 1, 1);
+
+  glBindTexture(GL_TEXTURE_2D, tex_flag);
+
+  for (x=0; x<63; x++)
+  {
+      for (y=0; y<63; y++)
+      {
+          glBegin(GL_QUADS);
+          glShadeModel(GL_SMOOTH);
+          GL_NORMAL(flag[x][y][0], flag[x][y][1], flag[x][y][2], flag[x+1][y][0], flag[x+1][y][1], flag[x+1][y][2], flag[x][y+1][0], flag[x][y+1][1], flag[x][y+1][2]);
+          glTexCoord2f(x/63.0, y/63.0);     glVertex3f(flag[x][y][0], flag[x][y][1], flag[x][y][2]);
+          glTexCoord2f(x/63.0, (y+1)/63.0);   glVertex3f(flag[x][y+1][0], flag[x][y+1][1], flag[x][y+1][2]);
+          glTexCoord2f((x+1)/63.0, (y+1)/63.0); glVertex3f(flag[x+1][y+1][0], flag[x+1][y+1][1], flag[x+1][y+1][2]);
+          glTexCoord2f((x+1)/63.0, y/63.0);   glVertex3f(flag[x+1][y][0], flag[x+1][y][1], flag[x+1][y][2]);
+          glEnd();
+      }
+  }
+
+  glPopMatrix();
+
+	for (y=0; y<64; y++)
+  {
+		state = flag[0][y][2];
+		for (x=0; x<63; x++)
+			flag[x][y][2] = flag[x+1][y][2];
+		flag[63][y][2] = state;
+	}
+}
 
 /*
  *  Draw the cockpit as an overlay
@@ -259,6 +334,8 @@ void draw_mountains(double tx, double ty, double tz, double sx, double sy, doubl
         float x=16*i-512;
         float y=16*j-512;
         glBegin(GL_QUADS);
+        glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
+        GL_NORMAL(x+ 0,y+ 0,zmag_local*(z[i+0][j+0]-z0), x+16,y+ 0,zmag_local*(z[i+1][j+0]-z0), x+ 0,y+16,zmag_local*(z[i+0][j+1]-z0));
         glTexCoord2f((i+0)/64.,(j+0)/64.); glVertex3d(x+ 0,y+ 0,zmag_local*(z[i+0][j+0]-z0));
         glTexCoord2f((i+1)/64.,(j+0)/64.); glVertex3d(x+16,y+ 0,zmag_local*(z[i+1][j+0]-z0));
         glTexCoord2f((i+1)/64.,(j+1)/64.); glVertex3d(x+16,y+16,zmag_local*(z[i+1][j+1]-z0));
@@ -355,7 +432,7 @@ void Project()
 static void draw_cube(double x, double y, double z, double dx, double dy ,double dz, double th)
 {
   //  Set specular color to white
-  float white[] = {1,1,1,1};
+  float white[] = {1,1,1,1};glNormal3f( 0, 0, +1);
   float black[] = {0,0,0,1};
   glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS, shiny);
   glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR, white);
@@ -425,6 +502,61 @@ static void draw_cube(double x, double y, double z, double dx, double dy ,double
    glEnd();
 
    //  Undo transofrmations
+   glPopMatrix();
+}
+
+/*
+ *  Draw a cylinder
+ */
+static void draw_cylinder(float x, float y, float z, float th, float ph, float R,float H, unsigned int slices)
+{
+   int i,j,k;   // Counters
+   int N=4*slices; // Number of slices
+
+   glPushMatrix();
+   glTranslated(x,y,z);
+   glRotated(ph,1,0,0);
+   glRotated(th,0,1,0);
+   glScaled(R,R,H);
+
+   //  Two end caps (fan of triangles)
+   for (j=-1;j<=1;j+=2)
+      for (i=0;i<N;i++)
+      {
+         float th0 = j* i   *360.0/N;
+         float th1 = j*(i+1)*360.0/N;
+         Point P[3] = { {0,0,j} , {Cos(th0),Sin(th0),j} , {Cos(th1),Sin(th1),j} };
+         Point N[3] = { {0,0,j} , {       0,       0,j} , {       0,       0,j} };
+         Point T[3] = { {0,0,0} , {Cos(th0),Sin(th0),0} , {Cos(th1),Sin(th1),0} };
+
+        glBegin(GL_POLYGON);
+        for (k=0;k<3;k++)
+        {
+           glNormal3f(N[k].x,N[k].y,N[k].z);
+           glTexCoord2f(T[k].x,T[k].y);
+           glVertex3f(P[k].x,P[k].y,P[k].z);
+        }
+        glEnd();
+      }
+   //  Cylinder Body (strip of quads)
+   for (i=0;i<N;i++)
+   {
+      float th0 =  i   *360.0/N;
+      float th1 = (i+1)*360.0/N;
+      Point P[4] = { {Cos(th0),Sin(th0),+1} , {Cos(th0),Sin(th0),-1} , {Cos(th1),Sin(th1),-1} , {Cos(th1),Sin(th1),+1} };
+      Point N[4] = { {Cos(th0),Sin(th0), 0} , {Cos(th0),Sin(th0), 0} , {Cos(th1),Sin(th1), 0} , {Cos(th1),Sin(th1), 0} };
+      Point T[4] = { {       0,th0/90.0, 0} , {       2,th0/90.0, 0} , {       2,th1/90.0, 0} , {       0,th1/90.0, 0} };
+
+      glBegin(GL_POLYGON);
+      for (k=0;k<4;k++)
+      {
+         glNormal3f(N[k].x,N[k].y,N[k].z);
+         glTexCoord2f(T[k].x,T[k].y);
+         glVertex3f(P[k].x,P[k].y,P[k].z);
+      }
+      glEnd();
+   }
+
    glPopMatrix();
 }
 
@@ -676,11 +808,9 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glPushMatrix();
   //  Offset
   glTranslated(x, y, z);
-  glRotated(yaw,0,1,0);
-  glRotated(pitch,0,0,1);
-  glRotated(roll,1,0,0);
-  //glRotated(270, 1, 0, 0);
-  //glRotated(th, 0, 1, 0);
+  glRotated(270, 0, 0, 1);
+  glRotated(270, 0, 1, 0);
+  glRotated(0, 1, 0, 0);
   glScaled(dx, dy, dz);
 
   //Draw the trunk
@@ -801,6 +931,9 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glPopMatrix();
 }
 
+/*
+ *  Draw Flight
+ */
 static void DrawFlight(double x0,double y0,double z0,
                        double dx,double dy,double dz,
                        double ux,double uy,double uz)
@@ -827,30 +960,59 @@ static void DrawFlight(double x0,double y0,double z0,
    //  Offset and rotate
    glTranslated(x0,y0,z0);
    glMultMatrixd(M);
+   //  k=0  draw body
+   //  k=1  draw engine
+   //  k=2  draw canopy
 
-   //glPushMatrix();
+   glPushMatrix();
    //glTranslated(X[i],Y[i],Z[i]);
-   draw_airplane(x0,y0,z0,1,1,1);
+   glRotated(yaw,0,1,0);
+   glRotated(pitch,0,0,1);
+   glRotated(roll,1,0,0);
+
+   //glCallList(lm);
+   draw_airplane(0,0,0,0.5,0.5,0.5);
+   glPopMatrix();
 
    //  Undo transformations
    glPopMatrix();
 }
 
+
+static void init_pb_screen(unsigned int *tex_list, const char * path, unsigned int count)
+{
+  unsigned int current = 0;
+  unsigned int path_length = strlen(path);
+  char full_path[path_length+10];
+
+  for(current = 0; current < count; current++)
+  {
+    sprintf(full_path, "%s-%u.bmp", path, current);
+    *(tex_list + current) = LoadTexBMP(full_path);
+  }
+}
+
 /*
  *  Generates a polygon screen and plays multiple frames on it.
  */
-static void playback_screen(double tx, double ty, double tz,
+static void draw_playback_screen(double tx, double ty, double tz,
                             double sx, double sy,
                             double rx, double ry, double rz,
                             const char * path, unsigned int count)
 {
   static unsigned int current = 0;
-  unsigned int path_length = strlen(path);
-  char full_path[path_length+10];
-  sprintf(full_path, "%s-%u.bmp", path, current);
+  static bool init = true;
+  static unsigned int *tex_pb_screen;
 
-  tex_pb_screen = LoadTexBMP(full_path);
-  glBindTexture(GL_TEXTURE_2D, tex_pb_screen);
+
+  if(init == true)
+  {
+    tex_pb_screen = (unsigned int *) malloc(sizeof(unsigned int) * count);
+    init_pb_screen(tex_pb_screen, path, count);
+    init = false;
+  }
+
+  glBindTexture(GL_TEXTURE_2D, *(tex_pb_screen + current));
 
   glPushMatrix();
   glTranslated(tx, ty, tz);
@@ -948,20 +1110,25 @@ void display()
    else
      glDisable(GL_LIGHTING);
 
-   //DrawFlight(X,Y,Z , Dx,Dy,Dz , Ux,Uy,Uz);
+  if(fly)
+   DrawFlight(X,Y,Z , Dx,Dy,Dz , Ux,Uy,Uz);
+
   if(show_pb_screen)
-    playback_screen(0, 0, 50, 2, 1, 0, 0, 0, "textures/playback/playback", 132);
+    draw_playback_screen(0, 0, 50, 2, 1, 0, 0, 0, "textures/playback/playback", 132);
+
 
    draw_mountains(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, zmag + 5);
    draw_mountains(40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 90, zmag - 1);
    draw_mountains(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, zmag + 2);
    draw_mountains(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, zmag - 3);
 
-  //Draw the onjects
-  draw_ship(0,-64,-10,4,4,4,0,90,0);
-  draw_ship(0,-64,+10,8,8,8,0,90,0);
+   draw_flag(-10, -46, -12, 1, 1, 1, 0, 0, 0);
 
-  draw_airplane(0,0,0,0.5,0.5,0.5);
+  //Draw the onjects
+  //draw_ship(0,-64,-10,4,4,4,0,90,0);
+  //draw_ship(0,-64,+10,8,8,8,0,90,0);
+
+  //draw_airplane(0,0,0,0.5,0.5,0.5);
   //draw_airplane(-1,3,-1,1,1,1,330);
 
    //  Draw axes
@@ -998,7 +1165,7 @@ void display()
    {
      //  Display parameters
      glWindowPos2i(5, 25);
-     Print("Angle  = %d %d   Dim = %1f\n   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %d   ", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
+     Print("Angle  = %d %d   Dim = %1f\n   FOV = %d   Projection = %s   Light = %s   Zmag = %f   temp = %f   ", th, ph, dim, fov, mode ? "Perpective":"Orthogonal", light ? "On":"Off", zmag, temp);
      glWindowPos2i(5, 5);
      Print("X = %lf   Y = %lf   Z = %lf   Ex = %lf   Ey = %lf   Ez = %lf   Yaw = %lf   Pitch = %lf   Roll = %lf", X, Y, Z, Ex, Ey, Ez, yaw, pitch, roll);
    }
@@ -1013,6 +1180,10 @@ void display()
  */
 void timer(int toggle)
 {
+  // int winX = glutGet((GLenum) GLUT_WINDOW_X);
+  // int winY = glutGet((GLenum) GLUT_WINDOW_Y);
+  //
+  // printf("X %d     Y %d\n", winX, winY);
    //  Toggle movement
    if (toggle>0)
       move = !move;
@@ -1206,9 +1377,13 @@ void key(unsigned char ch,int x,int y)
        fov--;
     //  Light elevation
     else if (ch=='[')
-       ylight -= 0.1;
+       ylight -= 1;
     else if (ch==']')
-       ylight += 0.1;
+       ylight += 1;
+    else if (ch=='{')
+       distance -= 1;
+    else if (ch=='}')
+       distance += 1;
    else if ((ch == 'w') || (ch == 'W'))
      show_sky = !show_sky;
     //  Ambient level
@@ -1246,10 +1421,10 @@ void key(unsigned char ch,int x,int y)
           show_pb_screen = !show_pb_screen;
 
     else if (ch == 'j')
-        temp -= 1;
+        temp -= 0.1;
 
     else if (ch == 'k')
-        temp += 1;
+        temp += 0.1;
 
     //  Translate shininess power to value (-1 => 0)
     shiny = shininess<0 ? 0 : pow(2.0,shininess);
@@ -1273,8 +1448,90 @@ void reshape(int width, int height)
    //  Set the viewport to the entire window
    glViewport(0, 0, width, height);
    //  Set projection
+   printf("w=%d, h=%d\n", width, height);
    Project();
 }
+
+// /*
+//  *  Translate mouse (x,y) to world coordinates
+//  */
+// Point Mouse2World(int x,int y)
+// {
+//    Point p;
+//    p.x = 2*asp*x       /(float)(width -1) - asp;
+//    p.y = 2*(height-1-y)/(float)(height-1) - 1;
+//    p.z = 0;
+//    return p;
+// }
+
+// /*
+//  *  Distance to point
+//  */
+// double Distance(Point p,int k)
+// {
+//    double dx = p.x - P[k].x;
+//    double dy = p.y - P[k].y;
+//    double dz = p.z - P[k].z;
+//    return sqrt(dx*dx+dy*dy+dz*dz);
+// }
+
+/*
+ *  GLUT calls this routine when a mouse is moved
+ */
+void motion(int x,int y)
+{
+   // if (move<0) return;
+   // //  Update point
+   // P[move] = Mouse2World(x,y);
+   // //  Redisplay
+   // glutPostRedisplay();
+    printf("X %d     Y %d\n", x, y);
+}
+
+/*
+ *  GLUT calls this routine when a mouse button is pressed or released
+ */
+// void mouse(int button, int state, int x, int y)
+// {
+//    Point p = Mouse2World(x,y);
+//
+//    //  Add a point
+//    if (button==GLUT_LEFT_BUTTON && state==GLUT_DOWN)
+//    {
+//       int k = n%N;
+//       n = k+1;
+//       P[k] = p;
+//       move = -1;
+//    }
+//    //  Stop move
+//    else if (button==GLUT_RIGHT_BUTTON && state==GLUT_UP)
+//    {
+//       P[move] = p;
+//       move = -1;
+//    }
+//    //  Start move
+//    else if (button==GLUT_RIGHT_BUTTON && state==GLUT_DOWN && n>0)
+//    {
+//       ///  Find nearest point
+//       int k;
+//       double dmin = Distance(p,0);
+//       move = 0;
+//       for (k=1;k<n;k++)
+//       {
+//          double d = Distance(p,k);
+//          if (d<dmin)
+//          {
+//             move = k;
+//             dmin = d;
+//          }
+//       }
+//       P[move] = p;
+//    }
+//    //  Calculate convex hull
+//    Hull2D();
+//    //  Redisplay
+//    glutPostRedisplay();
+// }
 
 /*
  *  Start up GLUT and tell it what to do
@@ -1297,6 +1554,8 @@ int main(int argc, char* argv[])
    glutReshapeFunc(reshape);
    glutSpecialFunc(special);
    glutKeyboardFunc(key);
+   //glutMouseFunc(mouse);
+   glutPassiveMotionFunc(motion);
 
    //  Load textures
    texture[0] = LoadTexBMP("textures/brick.bmp");
@@ -1309,6 +1568,7 @@ int main(int argc, char* argv[])
    texture[7] = LoadTexBMP("textures/wood.bmp");
 
    texture[8] = LoadTexBMP("textures/rockies.bmp");
+   texture[9] = LoadTexBMP("textures/metal.bmp");
 
    //  Load skybox texture
  tex_skycube[0] = LoadTexBMP("textures/skycube_sides.bmp");
@@ -1317,6 +1577,10 @@ int main(int argc, char* argv[])
  cockpit = LoadTexBMP("textures/cockpit.bmp");
  tex_ufo[0] = LoadTexBMP("textures/ufo1.bmp");
  tex_ufo[1] = LoadTexBMP("textures/ufo2.bmp");
+
+ tex_flag = LoadTexBMP("textures/us.bmp");
+
+ lm = LoadOBJ("lm.obj");
 
 //  Load DEM
 ReadDEM("textures/saddleback.dem");
