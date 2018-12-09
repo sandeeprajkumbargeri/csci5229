@@ -57,7 +57,7 @@ Use arrow keys to change viewing angles
 - F8 - Change ball increment
 - F9 - Invert bottom normal
 - m - Toggles light movement
-- w/W - Toggles wskycube world
+- w/W - Toggles skycube world
 - f/F - Fly mode toggle
 - [] - Lower/rise light
 - m/M - Toggle move (pause and un-pause movement in the scene)
@@ -78,9 +78,10 @@ Use arrow keys to change viewing angles
 #include <stdbool.h>
 
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
-//  Macro for sin & cos in degrees
 #define rgb(r,g,b) glColor3ub(r,g,b)
 #define PI 3.1415926
+#define FPV_ANGLE 1
+#define FPV_UNIT 0.01
 
 int axes = 0;       //  Display axes
 int mode = 1;       //  Projection mode
@@ -121,6 +122,8 @@ int tex_ufo[3];
 int cockpit;
 
 float temp = 0;
+bool boolFPV = false;
+int FPVangle = 0;
 
 unsigned int texture[10];
 //unsigned int tex_pb_screen;
@@ -139,8 +142,8 @@ double Dz = 0;   //  Direction
 double Sx = 1;   //  Sideways
 double Sy = 0;   //  Sideways
 double Sz = 0;   //  Sideways
-double Ux = 1;   //  Up
-double Uy = 0;   //  Up
+double Ux = 0;   //  Up
+double Uy = 1;   //  Up
 double Uz = 0;   //  Up
 double Ox = 0;   //  LookAt
 double Oy = 0;   //  LookAt
@@ -152,6 +155,8 @@ double Ez = 1;   //  Eye
 int lm = 0;
 double flag[64][64][3];
 unsigned int tex_flag = 0;
+
+int winX = 1000, winY = 1000, mouseX = 500, mouseY = 500;
 
 typedef struct {float x,y,z;} Point;
 
@@ -182,10 +187,6 @@ void draw_flag(double tx, double ty, double tz, double sx, double sy, double sz,
     boolInit = false;
   }
 
-  glBindTexture(GL_TEXTURE_2D, texture[9]);
-  draw_cylinder(tx-0.4, ty-2.25, tz, 0, 90, 0.8, 15, 8);
-  draw_sphere(tx-0.4, ty+12.8, tz, 0.8, 1, 0.8);
-
   glPushMatrix();
 
   glTranslated(tx, ty, tz);
@@ -193,6 +194,10 @@ void draw_flag(double tx, double ty, double tz, double sx, double sy, double sz,
   glRotated(ry, 0, 1, 0);
   glRotated(rz, 0, 0, 1);
   glScaled(sx, sy, sz);
+
+  glBindTexture(GL_TEXTURE_2D, texture[9]);
+  draw_cylinder(-0.4, -2.25, 0, 0, 90, 0.8, 15, 8);
+  draw_sphere(-0.4, +12.8, 0, 0.8, 1, 0.8);
 
 	glColor3f(1, 1, 1);
 
@@ -228,7 +233,7 @@ void draw_flag(double tx, double ty, double tz, double sx, double sy, double sz,
  *  Draw the cockpit as an overlay
  *  Must be called last
  */
-void Cockpit()
+void draw_cockpit()
 {
    //  Screen edge
    float w = asp>2 ? asp : 2;
@@ -740,7 +745,7 @@ static void draw_sphere(double x, double y, double z, double dx, double dy, doub
    glPopMatrix();
 }
 
-static void draw_lightball(double x,double y,double z,double r)
+static void draw_ufo(double x,double y,double z,double r)
 {
    int th,ph;
    float yellow[] = {1.0,1.0,0.0,1.0};
@@ -797,6 +802,25 @@ static void draw_lightball(double x,double y,double z,double r)
       }
       glEnd();
    }
+   //  Undo transofrmations
+   glPopMatrix();
+
+   //  Save transformation
+   glPushMatrix();
+   //  Offset, scale and rotate
+   glTranslated(x,y,z);
+   //glRotated(180, 0, 1, 1);
+   glScaled(r, r, r);
+   //  White ball
+   glColor3f(1,1,1);
+   glMaterialf(GL_FRONT,GL_SHININESS,shiny);
+   glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
+   glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
+
+   glBindTexture(GL_TEXTURE_2D, tex_ufo[1]);
+
+   //draw_cylinder(-1.5, -1, 0, 0, 45, 0.0625, 1, 8);
+
    //  Undo transofrmations
    glPopMatrix();
 
@@ -996,7 +1020,7 @@ static void init_pb_screen(unsigned int *tex_list, const char * path, unsigned i
  *  Generates a polygon screen and plays multiple frames on it.
  */
 static void draw_playback_screen(double tx, double ty, double tz,
-                            double sx, double sy,
+                            double s,
                             double rx, double ry, double rz,
                             const char * path, unsigned int count)
 {
@@ -1019,15 +1043,25 @@ static void draw_playback_screen(double tx, double ty, double tz,
   glRotated(ry, 0, 1, 0);
   glRotated(rz, 0, 0, 1);
   glRotated(rx, 1, 0, 0);
-  glScaled(sx, sy, 1);
+  glScaled(s, s, 1);
 
+  glBindTexture(GL_TEXTURE_2D, texture[9]);
+  draw_cylinder(-2.0625, -1.5, 0, 0, 90, 0.0625, 2.5, 8);
+  draw_cylinder(+2.0625, -1.5, 0, 0, 90, 0.0625, 2.5, 8);
+  draw_cylinder(0, +1.0625 , 0, 90, 0, 0.0625, 2, 8);
+  draw_cylinder(0, -1.0625 , 0, 90, 0, 0.0625, 2, 8);
+  draw_sphere(-2.0625, 1, 0, 0.0625, 0.25, 0.0625);
+  draw_sphere(+2.0625, 1, 0, 0.0625, 0.25, 0.0625);
+
+
+  glBindTexture(GL_TEXTURE_2D, *(tex_pb_screen + current));
   glBegin(GL_QUADS);
   //  Front
   glNormal3f( 0, 0, +1);
-  glTexCoord2f(0.0, 0.0);   glVertex3f(-1, -1, +1);
-  glTexCoord2f(1.0, 0.0);   glVertex3f(+1, -1, +1);
-  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, +1);
-  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, +1, +1);
+  glTexCoord2f(0.0, 0.0);   glVertex3f(-2, -1, +0);
+  glTexCoord2f(1.0, 0.0);   glVertex3f(+2, -1, +0);
+  glTexCoord2f(1.0, 1.0);   glVertex3f(+2, +1, +0);
+  glTexCoord2f(0.0, 1.0);   glVertex3f(-2, +1, +0);
   glEnd();
 
   glPopMatrix();
@@ -1089,7 +1123,7 @@ void display()
         float Position[]  = {distance*Cos(zh),ylight, distance*Sin(zh),1.0};
         //  Draw light position as ball (still no lighting here)
         glColor3f(1,1,1);
-        draw_lightball(Position[0],Position[1],Position[2] , 2);
+        draw_ufo(Position[0],Position[1],Position[2] , 1);
         //  OpenGL should normalize normal vectors
         glEnable(GL_NORMALIZE);
         //  Enable lighting
@@ -1113,8 +1147,10 @@ void display()
   if(fly)
    DrawFlight(X,Y,Z , Dx,Dy,Dz , Ux,Uy,Uz);
 
+  draw_flag(-25, -5, -40, 1, 1, 1, 0, 0, 0);
+
   if(show_pb_screen)
-    draw_playback_screen(0, 0, 50, 2, 1, 0, 0, 0, "textures/playback/playback", 132);
+    draw_playback_screen(-25, -14.7, -35, 4, 0, 0, 0, "textures/playback/playback", 132);
 
 
    draw_mountains(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, zmag + 5);
@@ -1122,7 +1158,7 @@ void display()
    draw_mountains(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, zmag + 2);
    draw_mountains(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, zmag - 3);
 
-   draw_flag(-10, -46, -12, 1, 1, 1, 0, 0, 0);
+
 
   //Draw the onjects
   //draw_ship(0,-64,-10,4,4,4,0,90,0);
@@ -1160,7 +1196,7 @@ void display()
    glDisable(GL_DEPTH_TEST);
 
    if(show_cockpit)
-    Cockpit();
+    draw_cockpit();
    else
    {
      //  Display parameters
@@ -1180,6 +1216,8 @@ void display()
  */
 void timer(int toggle)
 {
+  static double rotationTh = 0;
+  static double rotationPh = 0;
   // int winX = glutGet((GLenum) GLUT_WINDOW_X);
   // int winY = glutGet((GLenum) GLUT_WINDOW_Y);
   //
@@ -1193,6 +1231,11 @@ void timer(int toggle)
    //  Animate flight using Lorenz transform
    if (fly)
    {
+     double distX = (double) ((mouseX - (winX/2.0))/winX);
+     double distY = (double) ((mouseY - (winY/2.0))/winY);
+     rotationTh += (distX/10.0);
+     rotationPh += (distY/10.0);
+
       //  Lorenz integration parameters
       double dt = 0.003;
       double s = -1.7;
@@ -1212,6 +1255,11 @@ void timer(int toggle)
       Dx = s*(Y-X);
       Dy = X*(r-Z)-Y;
       Dz = X*Y - b*Z;
+
+      //Dx = X + (sin(rotationTh)/10.0);
+      //Dy = Y + (sin(rotationPh)/10.0);
+      //Dz = Z + (cos(rotationTh)/10.0);
+
       X += dt*Dx;
       Y += dt*Dy;
       Z += dt*Dz;
@@ -1263,13 +1311,27 @@ void timer(int toggle)
    //  Static Roll/Pitch/Yaw
    else
    {
-      Ex = -2*dim*Sin(th)*Cos(ph);
-      Ey = +2*dim        *Sin(ph);
-      Ez = +2*dim*Cos(th)*Cos(ph);
-      Ox = Oy = Oz = 0;
-      X = Y = Z = 0;
-      Dx = 1; Dy = 0; Dz = 0;
-      Ux = 0; Uy = Cos(ph); Uz = 0;
+       if(boolFPV)
+       {
+         Ox = Ex + (2*dim*Sin(FPVangle));
+         Oy = Ey;
+         Oz = Ez - (2*dim*Cos(FPVangle));
+
+//         gluLookAt(Ex,Ey,Ez, Cx+Ex,Ey,Cz+Ez, 0,1,0); //  Use gluLookAt
+         ph = temp;
+         Ux = 0; Uy = Cos(ph); Uz = 0;
+       }
+
+       else
+       {
+          Ex = -2*dim*Sin(th)*Cos(ph);
+          Ey = +2*dim        *Sin(ph);
+          Ez = +2*dim*Cos(th)*Cos(ph);
+          Ox = Oy = Oz = 0;
+          X = Y = Z = 0;
+          Dx = 1; Dy = 0; Dz = 0;
+          Ux = 0; Uy = Cos(ph); Uz = 0;
+      }
    }
    //  Set timer to go again
    if (move && toggle>=0)
@@ -1295,20 +1357,47 @@ void idle()
  */
 void special(int key,int x,int y)
 {
-   //  Right arrow key - increase angle by 5 degrees
-   if (key == GLUT_KEY_RIGHT)
-      th += 5;
-   //  Left arrow key - decrease angle by 5 degrees
-   else if (key == GLUT_KEY_LEFT)
-      th -= 5;
-   //  Up arrow key - increase elevation by 5 degrees
-   else if (key == GLUT_KEY_UP)
-      ph += 5;
-   //  Down arrow key - decrease elevation by 5 degrees
-   else if (key == GLUT_KEY_DOWN)
-      ph -= 5;
+  if(boolFPV)
+   {
+      if (key == GLUT_KEY_RIGHT)
+          FPVangle += FPV_ANGLE;
+
+      else if (key == GLUT_KEY_LEFT)
+          FPVangle -= FPV_ANGLE;
+
+      else if (key == GLUT_KEY_UP)
+      {
+          Ex += +2*dim*Sin(FPVangle) * FPV_UNIT;
+          Ez += -2*dim*Cos(FPVangle) * FPV_UNIT;
+      }
+
+      else if (key == GLUT_KEY_DOWN)
+      {
+         Ex -= 2*dim*Sin(FPVangle) * FPV_UNIT;
+         Ez -= -2*dim*Cos(FPVangle) * FPV_UNIT;
+      }
+
+      FPVangle %= 360;
+   }
+
+   else
+   {
+     //  Right arrow key - increase angle by 5 degrees
+     if (key == GLUT_KEY_RIGHT)
+        th += 5;
+     //  Left arrow key - decrease angle by 5 degrees
+     else if (key == GLUT_KEY_LEFT)
+        th -= 5;
+     //  Up arrow key - increase elevation by 5 degrees
+     else if (key == GLUT_KEY_UP)
+        ph += 5;
+     //  Down arrow key - decrease elevation by 5 degrees
+     else if (key == GLUT_KEY_DOWN)
+        ph -= 5;
+  }
+
    //  PageUp key - increase dim
-   else if (key == GLUT_KEY_PAGE_UP)
+  if (key == GLUT_KEY_PAGE_UP)
       dim -= 0.5;
    //  PageDown key - decrease dim
    else if (key == GLUT_KEY_PAGE_DOWN && dim>1)
@@ -1419,6 +1508,8 @@ void key(unsigned char ch,int x,int y)
           show_cockpit = !show_cockpit;
     else if (ch == 'b' || (ch == 'B'))
           show_pb_screen = !show_pb_screen;
+    else if (ch == 'v' || (ch == 'v'))
+          boolFPV = !boolFPV;
 
     else if (ch == 'j')
         temp -= 0.1;
@@ -1448,7 +1539,9 @@ void reshape(int width, int height)
    //  Set the viewport to the entire window
    glViewport(0, 0, width, height);
    //  Set projection
-   printf("w=%d, h=%d\n", width, height);
+   winX = width;
+   winY = height;
+
    Project();
 }
 
@@ -1480,12 +1573,8 @@ void reshape(int width, int height)
  */
 void motion(int x,int y)
 {
-   // if (move<0) return;
-   // //  Update point
-   // P[move] = Mouse2World(x,y);
-   // //  Redisplay
-   // glutPostRedisplay();
-    printf("X %d     Y %d\n", x, y);
+   mouseX = x;
+   mouseY = y;
 }
 
 /*
@@ -1545,7 +1634,7 @@ int main(int argc, char* argv[])
    glutInit(&argc, argv);
    //  Request double buffered, true color window with Z buffering at 600x600
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
-   glutInitWindowSize(1000, 1000);
+   glutInitWindowSize(winX, winY);
    glutCreateWindow("Sandeep Raj Kumbargeri - Homework 6 (Textures)");
    //glutFullScreen();
 
