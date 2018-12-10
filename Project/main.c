@@ -78,6 +78,7 @@ Use arrow keys to change viewing angles
 #include <stdbool.h>
 #include <time.h>
 #include <strings.h>
+#include <dirent.h>
 
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
 #define rgb(r,g,b) glColor3ub(r,g,b)
@@ -159,10 +160,14 @@ double flag[64][64][3];
 unsigned int tex_flag = 0;
 
 int winX = 1000, winY = 1000, mouseX = 500, mouseY = 500;
+int mainMenu, viewMenu;
+bool boolRefreshViewMenu;
+unsigned int viewMenuFileEntries = 0;
+char *filenameList;
 
-bool boolRunEyeCap = false;
 enum EyeCapStates {IDLE, INIT, RUNNING, STOP};
-enum EyeCapStates state = IDLE;
+enum EyeCapStates capState = IDLE;
+enum EyeCapStates viewState = IDLE;
 struct timespec current_time;
 
 typedef struct EyeCap
@@ -188,24 +193,27 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
 {
   EyeCap eye;
   static FILE *capture;
-  static char filename[16];
+  static char filename[32];
   static unsigned long current = 0;
   size_t bytes = 0;
 
-  if(state == INIT)
+  if(capState == INIT)
   {
+    printf("Entered INIT.\n");
     current = 0;
     bzero(&current_time, sizeof(time_t));
     clock_gettime(CLOCK_MONOTONIC, &current_time);
     bzero(filename, 16);
-    sprintf(filename, "eye_%ld.cap", current_time);
-    //printf("Current Time = %ld.\n", current_time.tv_sec);
-    capture = fopen(new_filename, "w");
-    state == RUNNING;
+    sprintf(filename, "capture/eye_%ld.cap", current_time.tv_sec);
+    printf("Filename = %s.\n", filename);
+    capture = fopen(filename, "w");
+    capState = RUNNING;
+    glutChangeToMenuEntry(1, "Stop Eye Capture", 1);
   }
 
-  if(state == RUNNING)
+  if(capState == RUNNING)
   {
+    bzero(&eye, sizeof(eye));
     eye.Ex = Epx;
     eye.Ey = Epy;
     eye.Ez = Epz;
@@ -216,8 +224,18 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
     eye.Uy = Euy;
     eye.Uz = Euz;
 
-    bytes = fwrite (&eye , sizeof(EyeCap), 1, capture);
+    bytes = fwrite ((const void *) &eye , sizeof(eye), 1, capture);
+    current++;
+    printf("Running. Frame: %lu. Bytes: %lu.\n", current, bytes);
+  }
 
+  else if(capState == STOP)
+  {
+    bytes = fwrite(&current, sizeof(current), 1, capture);
+    fclose(capture);
+    printf("STOP request. Bytes: %lu.\n", bytes);
+    capState = IDLE;
+    glutChangeToMenuEntry(1, "Start Eye Capture", 1);
   }
 }
 
@@ -623,124 +641,6 @@ static void draw_cylinder(float x, float y, float z, float th, float ph, float R
    glPopMatrix();
 }
 
-static void draw_ship(double x, double y, double z, double dx, double dy, double dz, double rx, double ry, double rz)
-{
-  //  Save transformation
-  glPushMatrix();
-  //  Offset
-  glTranslated(x,y,z);
-  glRotated(rx, 1, 0, 0);
-  glRotated(ry, 0, 1, 0);
-  glRotated(rz, 0, 0, 1);
-  glRotated(270, 1, 0, 0);
-  glScaled(dx,dy,dz);
-
-
-  rgb(176, 190, 197);
-  glBindTexture(GL_TEXTURE_2D,texture[0]);
-
-  //Start drawing ship
-  glBegin(GL_QUADS);
-
-  //Ship's top base
-  glNormal3d(0, 0, 1);
-  glTexCoord2f(0.0, 0.0);   glVertex3f(-1, -1, 1);
-  glTexCoord2f(1.0, 0.0);   glVertex3f(+1, -1, 1);
-  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, 1);
-  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, +1, 1);
-  glEnd();
-
-
-  glBegin(GL_QUADS);
-  rgb(120, 144, 156);
-
-  //Ship's bottom center
-  GL_NORMAL(0, -1, 0, 0, +1, 0, +1,- 1, +1);
-  glTexCoord2f(0.0, 1.0);   glVertex3f(+1, -1, +1);
-  glTexCoord2f(0.0, 0.0);   glVertex3f(0, -1, 0);
-  glTexCoord2f(1.0, 0.0);   glVertex3f(0, +1, 0);
-  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, +1, +1);
-  glEnd();
-
-  glBegin(GL_QUADS);
-  GL_NORMAL(0, -1, 0,-1, -1, +1,0, +1, 0);
-  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, -1, +1);
-  glTexCoord2f(0.0, 0.0);   glVertex3f(0, -1, 0);
-  glTexCoord2f(1.0, 0.0);   glVertex3f(0, +1, 0);
-  glTexCoord2f(1.0, 1.0);   glVertex3f(-1, +1, +1);
-
-  glEnd();
-
-
-  rgb(176, 190, 197);
-
-  glBegin(GL_TRIANGLES);
-
-  //Ship's top base corner triangles
-  glNormal3d(0, 0, +1);
-  glTexCoord2f(0.0, 0.0);   glVertex3f(-1, +1, 1);
-  glTexCoord2f(1.0, 0.0);   glVertex3f(+1, +1, 1);
-  glTexCoord2f(0.5, 1.0);   glVertex3f(0, +2, 1);
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  glNormal3d(0, 0, +1);
-  glTexCoord2f(0.0, 1.0);   glVertex3f(-1, -1, +1);
-  glTexCoord2f(0.5, 0.0);   glVertex3f(0, -2, +1);
-  glTexCoord2f(1.0, 1.0);   glVertex3f(+1, -1, +1);
-  glEnd();
-
-  rgb(120, 144, 156);
-
-  glBegin(GL_TRIANGLES);
-  //Ship's bottom corner triangles
-  GL_NORMAL(-1, +1, +1, 0, +2, +1, 0, +1, 0);
-  glTexCoord2f(0.0, 0.0);     glVertex3f(-1, +1, +1);
-  glTexCoord2f(0.5, 1.0);     glVertex3f(0, +1, 0);
-  glTexCoord2f(1.0, 0.0);     glVertex3f(0, +2, +1);
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  GL_NORMAL(0, +2, +1, +1, +1, +1, 0, +1, 0);
-  glTexCoord2f(0.0, 0.0);     glVertex3f(+1, +1, +1);
-  glTexCoord2f(0.5, 1.0);     glVertex3f(0, +1, 0);
-  glTexCoord2f(1.0, 0.0);     glVertex3f(0, +2, +1);
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  GL_NORMAL(0, -2, +1, -1,-1, +1, 0, -1, 0);
-  glTexCoord2f(0.0, 0.0);     glVertex3f(-1,-1, +1);
-  glTexCoord2f(0.5, 1.0);     glVertex3f(0, -1, 0);
-  glTexCoord2f(1.0, 0.0);     glVertex3f(0, -2, +1);
-  glEnd();
-
-  glBegin(GL_TRIANGLES);
-  GL_NORMAL(0, -1, 0, +1, -1, +1, 0, -2, +1);
-  glTexCoord2f(0.0, 0.0);     glVertex3f(+1, -1, +1);
-  glTexCoord2f(0.5, 1.0);     glVertex3f(0, -1, 0);
-  glTexCoord2f(1.0, 0.0);     glVertex3f(0, -2, +1);
-  glEnd();
-
-  //Ship's cargo level up
-  rgb(141, 110, 99);
-  glBindTexture(GL_TEXTURE_2D,texture[7]);
-  draw_cube(0, 0, 1.2, 0.5, 1.0, 0.2, 0);
-
-  rgb(161, 136, 127);
-  glBindTexture(GL_TEXTURE_2D,texture[2]);
-  draw_cube(0, 0, 1.6, 0.25, 0.75, 0.2, 0);
-
-  //Ship's cargo chimney pipes
-  rgb(188, 170, 164);
-  glBindTexture(GL_TEXTURE_2D,texture[4]);
-  draw_cube(0, 0.25, 2.2, 0.1, 0.1, 0.4, 0);
-
-  rgb(215, 204, 200);
-  draw_cube(0, -0.25, 2.0, 0.1, 0.1, 0.2, 0);
-
-  glPopMatrix();
-}
-
 /*
  *  Draw vertex in polar coordinates
  */
@@ -1083,7 +983,7 @@ static void init_pb_screen(unsigned int *tex_list, const char * path, unsigned i
 
   for(current = 0; current < count; current++)
   {
-    sprintf(full_path, "%s-%u.bmp", path, current);
+    sprintf(full_path, "%s-%u.bmp", path, current + 1);
     *(tex_list + current) = LoadTexBMP(full_path);
   }
 }
@@ -1107,8 +1007,6 @@ static void draw_playback_screen(double tx, double ty, double tz,
     init_pb_screen(tex_pb_screen, path, count);
     init = false;
   }
-
-  glBindTexture(GL_TEXTURE_2D, *(tex_pb_screen + current));
 
   glPushMatrix();
   glTranslated(tx, ty, tz);
@@ -1143,6 +1041,58 @@ static void draw_playback_screen(double tx, double ty, double tz,
     current = 0;
 }
 
+static void refreshViewMenu(void)
+{
+  DIR *dir;
+  unsigned int current = 0;
+	struct dirent *ent;
+  unsigned int max_filename_length = 32;
+
+  if(viewMenuFileEntries != 0)
+  {
+    free(filenameList);
+
+    glutSetMenu(viewMenu);
+    for(current = 2; current < (viewMenuFileEntries + 2); current++)
+      glutRemoveMenuItem(2);
+  }
+
+  viewMenuFileEntries = 0;
+
+	if((dir = opendir("capture/")) != NULL)
+	{
+  	while((ent = readdir(dir)) != NULL)
+		{
+      if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0))
+          viewMenuFileEntries++;
+		}
+    closedir(dir);
+  }
+
+  filenameList = (char *) malloc(sizeof(char) * viewMenuFileEntries * max_filename_length);
+  bzero(filenameList, sizeof(char) * viewMenuFileEntries * max_filename_length);
+  current = 0;
+
+  if((dir = opendir("capture/")) != NULL)
+  {
+    while((ent = readdir(dir)) != NULL)
+    {
+      if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0))
+      {
+          sprintf(filenameList + (max_filename_length * current), "%s", ent->d_name);
+          current++;
+      }
+    }
+    closedir(dir);
+  }
+
+  glutSetMenu(viewMenu);
+  for(current = 2; current < (viewMenuFileEntries + 2); current++)
+    glutAddMenuEntry(filenameList + (max_filename_length * (current - 2)), current);
+
+
+  glutSetMenu(mainMenu);
+}
 
 /*
  *  OpenGL (GLUT) calls this routine to display the scene
@@ -1160,6 +1110,12 @@ void display()
    eyeCapture(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
 
    gluLookAt(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
+
+   if(boolRefreshViewMenu == true)
+   {
+     refreshViewMenu();
+     boolRefreshViewMenu = false;
+   }
 
    glEnable(GL_TEXTURE_2D);
    glTexEnvi(GL_TEXTURE_ENV , GL_TEXTURE_ENV_MODE , GL_MODULATE);
@@ -1592,11 +1548,14 @@ void key(unsigned char ch,int x,int y)
           boolFPV = !boolFPV;
     else if (ch == 'c' || (ch == 'C'))
     {
-        if(state == IDLE)
-          state = INIT;
+      if(viewState == IDLE)
+      {
+        if(capState == IDLE)
+          capState = INIT;
 
-        if(state == RUNNING)
-          state = STOP;
+        if(capState == RUNNING)
+          capState = STOP;
+      }
     }
 
     else if (ch == 'j')
@@ -1710,6 +1669,48 @@ void motion(int x,int y)
 //    glutPostRedisplay();
 // }
 
+
+void mainMenuHandler(int value)
+{
+  if(value == 1)
+  {
+    if(viewState == IDLE)
+    {
+      if(capState == IDLE)
+        capState = INIT;
+
+      if(capState == RUNNING)
+        capState = STOP;
+    }
+  }
+}
+
+void captureMenuHandler(int value)
+{
+
+}
+
+void viewMenuHandler(int value)
+{
+  if(value == 1)
+    boolRefreshViewMenu = true;
+
+  //if(value > 1)
+    //initEyeCapViewer(value);
+}
+
+static void glutMenuSetup(void)
+{
+  viewMenu = glutCreateMenu(viewMenuHandler);
+    glutAddMenuEntry("Refresh", 1);
+
+  mainMenu = glutCreateMenu(mainMenuHandler);
+    glutAddMenuEntry("Start Eye Capture", 1);
+    glutAddSubMenu ("Viewer", viewMenu);
+    glutAddMenuEntry("Exit", 3);
+  glutAttachMenu(GLUT_RIGHT_BUTTON);
+}
+
 /*
  *  Start up GLUT and tell it what to do
  */
@@ -1734,6 +1735,7 @@ int main(int argc, char* argv[])
    glutKeyboardFunc(key);
    //glutMouseFunc(mouse);
    glutPassiveMotionFunc(motion);
+   glutMenuSetup();
 
    //  Load textures
    texture[0] = LoadTexBMP("textures/brick.bmp");
