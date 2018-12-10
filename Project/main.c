@@ -76,6 +76,8 @@ Use arrow keys to change viewing angles
 
 #include "CSCIx229.h"
 #include <stdbool.h>
+#include <time.h>
+#include <strings.h>
 
 #define GL_NORMAL(a,b,c,p,q,r,x,y,z)  glNormal3d(((q-b)*(z-c))-((y-b)*(r-c)),-((p-a)*(z-c))-((x-a)*(r-c)),((p-a)*(y-b))-((x-a)*(q-b)))
 #define rgb(r,g,b) glColor3ub(r,g,b)
@@ -87,7 +89,7 @@ int axes = 0;       //  Display axes
 int mode = 1;       //  Projection mode
 int move = 0;       //  Move light
 int th = 0;         //  Azimuth of view angle
-int ph = 0;         //  Elevation of view angle
+int ph = 0;         //  Elevation of view angle2
 int fov = 55;       //  Field of view (for perspective)
 double asp = 1;     //  Aspect ratio
 double dim = 50.0;   //  Size of world
@@ -158,11 +160,67 @@ unsigned int tex_flag = 0;
 
 int winX = 1000, winY = 1000, mouseX = 500, mouseY = 500;
 
+bool boolRunEyeCap = false;
+enum EyeCapStates {IDLE, INIT, RUNNING, STOP};
+enum EyeCapStates state = IDLE;
+struct timespec current_time;
+
+typedef struct EyeCap
+{
+  double Ex;   //  Eye
+  double Ey;   //  Eye
+  double Ez;   //  Eye
+  double Ox;   //  LookAt
+  double Oy;   //  LookAt
+  double Oz;   //  LookAt
+  double Ux;   //  Up
+  double Uy;   //  Up
+  double Uz;   //  Up
+} EyeCap;
+
 typedef struct {float x,y,z;} Point;
 
 static void draw_cube(double x, double y, double z, double dx, double dy ,double dz, double th);
 static void draw_cylinder(float x, float y, float z, float th, float ph, float R,float H, unsigned int slices);
 static void draw_sphere(double x, double y, double z, double dx, double dy, double dz);
+
+static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eoy, double Eoz, double Eux, double Euy, double Euz)
+{
+  EyeCap eye;
+  static FILE *capture;
+  static char filename[16];
+  static unsigned long current = 0;
+  size_t bytes = 0;
+
+  if(state == INIT)
+  {
+    current = 0;
+    bzero(&current_time, sizeof(time_t));
+    clock_gettime(CLOCK_MONOTONIC, &current_time);
+    bzero(filename, 16);
+    sprintf(filename, "eye_%ld.cap", current_time);
+    //printf("Current Time = %ld.\n", current_time.tv_sec);
+    capture = fopen(new_filename, "w");
+    state == RUNNING;
+  }
+
+  if(state == RUNNING)
+  {
+    eye.Ex = Epx;
+    eye.Ey = Epy;
+    eye.Ez = Epz;
+    eye.Ox = Eox;
+    eye.Oy = Eoy;
+    eye.Oz = Eoz;
+    eye.Ux = Eux;
+    eye.Uy = Euy;
+    eye.Uz = Euz;
+
+    bytes = fwrite (&eye , sizeof(EyeCap), 1, capture);
+
+  }
+}
+
 
 static void init_flag(void)
 {
@@ -745,18 +803,82 @@ static void draw_sphere(double x, double y, double z, double dx, double dy, doub
    glPopMatrix();
 }
 
+static void draw_blades(double x, double y, double z, double sx, double sy, double sz, double rx, double ry, double rz)
+{
+  glPushMatrix();
+  glTranslated(x, y, z);
+  glRotated(rx, 1, 0, 0);
+  glRotated(ry, 1, 0, 0);
+  glRotated(rz, 1, 0, 0);
+  glScaled(sx, sy, sz);
+
+  glColor3f(1,1,1);
+
+  glBegin(GL_TRIANGLES);
+
+  glNormal3d(0, +1, 0);
+  glVertex3f(0, +0, 0);
+  glVertex3f(-0.1, +0, +1);
+  glVertex3f(+0.1, +0, +1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(-0.1, +0, -1);
+  glVertex3f(+0.1, +0, -1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(-0.4, +0, 1);
+  glVertex3f(-0.6, +0, 1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(-0.4, +0, -1);
+  glVertex3f(-0.6, +0, -1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(+0.4, +0, +1);
+  glVertex3f(+0.6, +0, +1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(+0.4, +0, -1);
+  glVertex3f(+0.6, +0, -1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(+1, +0, -0.1);
+  glVertex3f(+1, +0, +0.1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(-1, +0, -0.1);
+  glVertex3f(-1, +0, +0.1);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(+1, +0, -0.4);
+  glVertex3f(+1, +0, -0.6);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(-1, +0, +0.4);
+  glVertex3f(-1, +0, +0.6);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(-1, +0, -0.4);
+  glVertex3f(-1, +0, -0.6);
+
+  glVertex3f(0, +0, 0);
+  glVertex3f(+1, +0, +0.4);
+  glVertex3f(+1, +0, +0.6);
+
+  glEnd();
+
+  glPopMatrix();
+}
+
 static void draw_ufo(double x,double y,double z,double r)
 {
    int th,ph;
    float yellow[] = {1.0,1.0,0.0,1.0};
    float Emission[]  = {0.0,0.0,0.01*emission,1.0};
-   //  Save transformation
+
    glPushMatrix();
-   //  Offset, scale and rotate
    glTranslated(x,y,z);
-   //glRotated(180, 0, 1, 0);
    glScaled(r,r,r);
-   //  White ball
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
@@ -764,7 +886,6 @@ static void draw_ufo(double x,double y,double z,double r)
 
    glEnable(GL_TEXTURE_2D);
    glBindTexture(GL_TEXTURE_2D, tex_ufo[0]);
-   //  Bands of latitude
    for (ph=-90;ph<90;ph+=inc)
    {
       glBegin(GL_QUAD_STRIP);
@@ -775,23 +896,17 @@ static void draw_ufo(double x,double y,double z,double r)
       }
       glEnd();
    }
-   //  Undo transofrmations
    glPopMatrix();
 
-   //  Save transformation
    glPushMatrix();
-   //  Offset, scale and rotate
-   glTranslated(x,y,z);
-   //glRotated(180, 0, 1, 1);
-   glScaled(2*r,r/5,2*r);
-   //  White ball
+   glTranslated(x, y - 0.3, z);
+   glScaled(2*r,r/8,2*r);
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
    glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
 
    glBindTexture(GL_TEXTURE_2D, tex_ufo[1]);
-   //  Bands of latitude
    for (ph=-90;ph<90;ph+=inc)
    {
       glBegin(GL_QUAD_STRIP);
@@ -802,16 +917,11 @@ static void draw_ufo(double x,double y,double z,double r)
       }
       glEnd();
    }
-   //  Undo transofrmations
    glPopMatrix();
 
-   //  Save transformation
    glPushMatrix();
-   //  Offset, scale and rotate
-   glTranslated(x,y,z);
-   //glRotated(180, 0, 1, 1);
+   glTranslated(x, y - 0.3, z);
    glScaled(r, r, r);
-   //  White ball
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
@@ -819,11 +929,30 @@ static void draw_ufo(double x,double y,double z,double r)
 
    glBindTexture(GL_TEXTURE_2D, tex_ufo[1]);
 
-   //draw_cylinder(-1.5, -1, 0, 0, 45, 0.0625, 1, 8);
+   draw_cylinder(-1.25, -0.5, 0, 150, 90, 0.0625, 1, 8);
+   draw_cylinder(+1.25, -0.5, 0, 210, 90, 0.0625, 1, 8);
 
-   //  Undo transofrmations
+   draw_cylinder(0, -0.5, -1.25, 0, 120, 0.0625, 1, 8);
+   draw_cylinder(0, -0.5, +1.25, 0, 240, 0.0625, 1, 8);
+
+   glBindTexture(GL_TEXTURE_2D, texture[9]);
+   draw_sphere(-1.5, 0, 0, 0.25, 0.25, 0.25);
+   draw_sphere(+1.5, 0, 0, 0.25, 0.25, 0.25);
+   draw_sphere(0, 0, -1.5, 0.25, 0.25, 0.25);
+   draw_sphere(0, 0, +1.5, 0.25, 0.25, 0.25);
+
+   glBindTexture(GL_TEXTURE_2D, texture[9]);
+   draw_sphere(-1.8, -1.4, 0, 0.25, 0.03125, 0.25);
+   draw_sphere(+1.8, -1.4, 0, 0.25, 0.03125, 0.25);
+   draw_sphere(0, -1.4, -1.8, 0.25, 0.03125, 0.25);
+   draw_sphere(0, -1.4, +1.8, 0.25, 0.03125, 0.25);
+
    glPopMatrix();
 
+   glMaterialf(GL_FRONT,GL_SHININESS,shiny);
+   glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
+   glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
+   draw_blades(x, y, z, 1.5*r, 1.5*r, 1.5*r, 0, 0, 0);
 }
 
 static void draw_airplane(double x, double y, double z, double dx, double dy, double dz)
@@ -893,63 +1022,6 @@ static void draw_airplane(double x, double y, double z, double dx, double dy, do
   glTexCoord2f(1.0, 0.0);   glVertex3f(-0.5, +2, +0.4);
   glTexCoord2f(0.0, 0.0);   glVertex3f(-0.5, +2, -0.4);
   glTexCoord2f(0.5, 1.0);   glVertex3f(0, +3, 0);
-  glEnd();
-
-
-  glColor3f(1,1,1);
-
-  glBegin(GL_TRIANGLES);
-
-  //Draw the fan blades at the tip of the head
-  glNormal3d(0, +1, 0);
-  glVertex3f(0, +3, 0);
-  glVertex3f(-0.1, +3, +1);
-  glVertex3f(+0.1, +3, +1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(-0.1, +3, -1);
-  glVertex3f(+0.1, +3, -1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(-0.4, +3, 1);
-  glVertex3f(-0.6, +3, 1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(-0.4, +3, -1);
-  glVertex3f(-0.6, +3, -1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(+0.4, +3, +1);
-  glVertex3f(+0.6, +3, +1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(+0.4, +3, -1);
-  glVertex3f(+0.6, +3, -1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(+1, +3, -0.1);
-  glVertex3f(+1, +3, +0.1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(-1, +3, -0.1);
-  glVertex3f(-1, +3, +0.1);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(+1, +3, -0.4);
-  glVertex3f(+1, +3, -0.6);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(-1, +3, +0.4);
-  glVertex3f(-1, +3, +0.6);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(-1, +3, -0.4);
-  glVertex3f(-1, +3, -0.6);
-
-  glVertex3f(0, +3, 0);
-  glVertex3f(+1, +3, +0.4);
-  glVertex3f(+1, +3, +0.6);
-
   glEnd();
 
   glPopMatrix();
@@ -1084,6 +1156,8 @@ void display()
    glEnable(GL_DEPTH_TEST);
    //  Undo previous transformations
    glLoadIdentity();
+
+   eyeCapture(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
 
    gluLookAt(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
 
@@ -1504,12 +1578,26 @@ void key(unsigned char ch,int x,int y)
        zmag += 0.1;
     else if (ch == 'z' && zmag>-10)
        zmag -= 0.1;
+
+    else if (ch == 'U')
+      Ey += 0.25;
+    else if (ch == 'u')
+      Ey -= 0.25;
+
     else if (ch == 'q' || (ch == 'Q'))
           show_cockpit = !show_cockpit;
     else if (ch == 'b' || (ch == 'B'))
           show_pb_screen = !show_pb_screen;
-    else if (ch == 'v' || (ch == 'v'))
+    else if (ch == 'v' || (ch == 'V'))
           boolFPV = !boolFPV;
+    else if (ch == 'c' || (ch == 'C'))
+    {
+        if(state == IDLE)
+          state = INIT;
+
+        if(state == RUNNING)
+          state = STOP;
+    }
 
     else if (ch == 'j')
         temp -= 0.1;
@@ -1630,12 +1718,13 @@ int main(int argc, char* argv[])
    show_sky = true;
    show_cockpit = false;
    show_pb_screen = true;
+
    //  Initialize GLUT
    glutInit(&argc, argv);
    //  Request double buffered, true color window with Z buffering at 600x600
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
    glutInitWindowSize(winX, winY);
-   glutCreateWindow("Sandeep Raj Kumbargeri - Homework 6 (Textures)");
+   glutCreateWindow("Sandeep Raj Kumbargeri - On the moon");
    //glutFullScreen();
 
    //  Set callbacks
