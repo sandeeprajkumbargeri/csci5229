@@ -85,6 +85,7 @@ Use arrow keys to change viewing angles
 #define PI 3.1415926
 #define FPV_ANGLE 1
 #define FPV_UNIT 0.01
+#define MAX_FILENAME_LENGTH 32
 
 int axes = 0;       //  Display axes
 int mode = 1;       //  Projection mode
@@ -164,6 +165,7 @@ int mainMenu, viewMenu;
 bool boolRefreshViewMenu;
 unsigned int viewMenuFileEntries = 0;
 char *filenameList;
+unsigned int viewFileIndex;
 
 enum EyeCapStates {IDLE, INIT, RUNNING, STOP};
 enum EyeCapStates capState = IDLE;
@@ -193,7 +195,7 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
 {
   EyeCap eye;
   static FILE *capture;
-  static char filename[32];
+  static char filename[MAX_FILENAME_LENGTH];
   static unsigned long current = 0;
   size_t bytes = 0;
 
@@ -203,7 +205,7 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
     current = 0;
     bzero(&current_time, sizeof(time_t));
     clock_gettime(CLOCK_MONOTONIC, &current_time);
-    bzero(filename, 16);
+    bzero(filename, MAX_FILENAME_LENGTH);
     sprintf(filename, "capture/eye_%ld.cap", current_time.tv_sec);
     printf("Filename = %s.\n", filename);
     capture = fopen(filename, "w");
@@ -237,6 +239,101 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
     capState = IDLE;
     glutChangeToMenuEntry(1, "Start Eye Capture", 1);
   }
+}
+
+static void EyeCapViewer(double Epx, double Epy, double Epz, double Eox, double Eoy, double Eoz, double Eux, double Euy, double Euz)
+{
+  static EyeCap saveEye, currEye;
+  static FILE *viewer;
+  static EyeCap *import;
+  static unsigned long current = 0, total_entries = 0;
+  static char path[MAX_FILENAME_LENGTH + 8];
+  size_t bytes = 0;
+
+  if(viewState == INIT)
+  {
+    printf("Entered INIT.\n");
+    total_entries = 0;
+    current = 0;
+
+    bzero(path, MAX_FILENAME_LENGTH + 8);
+    sprintf(path, "capture/%s", filenameList + ((viewFileIndex - 2) * MAX_FILENAME_LENGTH));
+    printf("Reading capture file \"%s\"\n", path);
+    viewer = fopen(path, "r");
+
+    if(viewer == NULL)
+    {
+      printf("Error reading capture file \"%s\"\n", filenameList + ((viewFileIndex - 2) * MAX_FILENAME_LENGTH));
+      return;
+    }
+
+    fseek(viewer, -sizeof(unsigned long), SEEK_END);
+    bytes = fread (&total_entries, sizeof(unsigned long), 1, viewer);
+    printf("Units read = %lu. Number of entries = %lu.\n", bytes, total_entries);
+
+    import = (EyeCap *) malloc(sizeof(EyeCap) * total_entries);
+    rewind(viewer);
+    fread (import, sizeof(EyeCap), total_entries, viewer);
+
+    fclose(viewer);
+
+    bzero(&saveEye, sizeof(saveEye));
+    saveEye.Ex = Epx;
+    saveEye.Ey = Epy;
+    saveEye.Ez = Epz;
+    saveEye.Ox = Eox;
+    saveEye.Oy = Eoy;
+    saveEye.Oz = Eoz;
+    saveEye.Ux = Eux;
+    saveEye.Uy = Euy;
+    saveEye.Uz = Euz;
+
+    viewState = RUNNING;
+    //glutChangeToMenuEntry(1, "Stop Eye Capture", 1);
+  }
+
+  if(viewState == RUNNING)
+  {
+    bzero(&currEye, sizeof(currEye));
+    currEye = *(import + (sizeof(EyeCap) * current));
+
+    Ex = currEye.Ex;
+    Ey = currEye.Ey;
+    Ez = currEye.Ez;
+    Ox = currEye.Ox;
+    Oy = currEye.Oy;
+    Oz = currEye.Oz;
+    Ux = currEye.Ux;
+    Uy = currEye.Uy;
+    Uz = currEye.Uz;
+
+    current++;
+
+    printf("Running. Frame: %lu.\n", current);
+
+    if(current == total_entries)
+      viewState = STOP;
+  }
+
+  else if(viewState == STOP)
+  {
+    free(import);
+
+    Ex = saveEye.Ex;
+    Ey = saveEye.Ey;
+    Ez = saveEye.Ez;
+    Ox = saveEye.Ox;
+    Oy = saveEye.Oy;
+    Oz = saveEye.Oz;
+    Ux = saveEye.Ux;
+    Uy = saveEye.Uy;
+    Uz = saveEye.Uz;
+
+    viewState = IDLE;
+
+    printf("STOP request.");
+  }
+
 }
 
 
@@ -1046,7 +1143,6 @@ static void refreshViewMenu(void)
   DIR *dir;
   unsigned int current = 0;
 	struct dirent *ent;
-  unsigned int max_filename_length = 32;
 
   if(viewMenuFileEntries != 0)
   {
@@ -1069,8 +1165,8 @@ static void refreshViewMenu(void)
     closedir(dir);
   }
 
-  filenameList = (char *) malloc(sizeof(char) * viewMenuFileEntries * max_filename_length);
-  bzero(filenameList, sizeof(char) * viewMenuFileEntries * max_filename_length);
+  filenameList = (char *) malloc(sizeof(char) * viewMenuFileEntries * MAX_FILENAME_LENGTH);
+  bzero(filenameList, sizeof(char) * viewMenuFileEntries * MAX_FILENAME_LENGTH);
   current = 0;
 
   if((dir = opendir("capture/")) != NULL)
@@ -1079,7 +1175,7 @@ static void refreshViewMenu(void)
     {
       if((strcmp(ent->d_name, ".") != 0) && (strcmp(ent->d_name, "..") != 0))
       {
-          sprintf(filenameList + (max_filename_length * current), "%s", ent->d_name);
+          sprintf(filenameList + (MAX_FILENAME_LENGTH * current), "%s", ent->d_name);
           current++;
       }
     }
@@ -1088,7 +1184,7 @@ static void refreshViewMenu(void)
 
   glutSetMenu(viewMenu);
   for(current = 2; current < (viewMenuFileEntries + 2); current++)
-    glutAddMenuEntry(filenameList + (max_filename_length * (current - 2)), current);
+    glutAddMenuEntry(filenameList + (MAX_FILENAME_LENGTH * (current - 2)), current);
 
 
   glutSetMenu(mainMenu);
@@ -1365,7 +1461,11 @@ void timer(int toggle)
    }
    //  Set timer to go again
    if (move && toggle>=0)
+   {
     glutTimerFunc(50,timer,0);
+  }
+
+    EyeCapViewer(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
    //  Tell GLUT it is necessary to redisplay the scene
    glutPostRedisplay();
 }
@@ -1685,18 +1785,20 @@ void mainMenuHandler(int value)
   }
 }
 
-void captureMenuHandler(int value)
-{
-
-}
 
 void viewMenuHandler(int value)
 {
   if(value == 1)
     boolRefreshViewMenu = true;
 
-  //if(value > 1)
-    //initEyeCapViewer(value);
+  if(value > 1)
+  {
+    printf("Hello\n");
+    viewFileIndex = value;
+
+    if((viewState == IDLE) && (capState == IDLE))
+      viewState = INIT;
+  }
 }
 
 static void glutMenuSetup(void)
