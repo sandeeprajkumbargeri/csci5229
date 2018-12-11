@@ -162,7 +162,7 @@ unsigned int tex_flag = 0;
 
 int winX = 1000, winY = 1000, mouseX = 500, mouseY = 500;
 int mainMenu, viewMenu;
-bool boolRefreshViewMenu;
+bool boolRefreshViewMenu = true;
 unsigned int viewMenuFileEntries = 0;
 char *filenameList;
 unsigned int viewFileIndex;
@@ -190,6 +190,9 @@ typedef struct {float x,y,z;} Point;
 static void draw_cube(double x, double y, double z, double dx, double dy ,double dz, double th);
 static void draw_cylinder(float x, float y, float z, float th, float ph, float R,float H, unsigned int slices);
 static void draw_sphere(double x, double y, double z, double dx, double dy, double dz);
+static void refreshViewMenu(void);
+
+/* ############################################################################################################### */
 
 static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eoy, double Eoz, double Eux, double Euy, double Euz)
 {
@@ -201,14 +204,14 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
 
   if(capState == INIT)
   {
-    printf("Entered INIT.\n");
+//    printf("Entered INIT.\n");
     current = 0;
     bzero(&current_time, sizeof(time_t));
     clock_gettime(CLOCK_MONOTONIC, &current_time);
     bzero(filename, MAX_FILENAME_LENGTH);
     sprintf(filename, "capture/eye_%ld.cap", current_time.tv_sec);
-    printf("Filename = %s.\n", filename);
-    capture = fopen(filename, "w");
+    //printf("Filename = %s.\n", filename);
+    capture = fopen(filename, "wb");
     capState = RUNNING;
     glutChangeToMenuEntry(1, "Stop Eye Capture", 1);
   }
@@ -226,26 +229,28 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
     eye.Uy = Euy;
     eye.Uz = Euz;
 
+    printf("EC: %lf %lf %lf %lf %lf %lf %lf %lf %lf.\n", eye.Ex, eye.Ey, eye.Ez, eye.Ox, eye.Oy, eye.Oz, eye.Ux, eye.Uy, eye.Uz);
     bytes = fwrite ((const void *) &eye , sizeof(eye), 1, capture);
     current++;
-    printf("Running. Frame: %lu. Bytes: %lu.\n", current, bytes);
+    //printf("Running. Frame: %lu. Bytes: %lu.\n", current, bytes);
   }
 
   else if(capState == STOP)
   {
     bytes = fwrite(&current, sizeof(current), 1, capture);
     fclose(capture);
-    printf("STOP request. Bytes: %lu.\n", bytes);
+    //printf("STOP request. Bytes: %lu.\n", bytes);
     capState = IDLE;
     glutChangeToMenuEntry(1, "Start Eye Capture", 1);
+    refreshViewMenu();
   }
 }
 
-static void EyeCapViewer(double Epx, double Epy, double Epz, double Eox, double Eoy, double Eoz, double Eux, double Euy, double Euz)
+static void eyeCapViewer(double Epx, double Epy, double Epz, double Eox, double Eoy, double Eoz, double Eux, double Euy, double Euz)
 {
   static EyeCap saveEye, currEye;
   static FILE *viewer;
-  static EyeCap *import;
+  static unsigned char *import;
   static unsigned long current = 0, total_entries = 0;
   static char path[MAX_FILENAME_LENGTH + 8];
   size_t bytes = 0;
@@ -259,7 +264,7 @@ static void EyeCapViewer(double Epx, double Epy, double Epz, double Eox, double 
     bzero(path, MAX_FILENAME_LENGTH + 8);
     sprintf(path, "capture/%s", filenameList + ((viewFileIndex - 2) * MAX_FILENAME_LENGTH));
     printf("Reading capture file \"%s\"\n", path);
-    viewer = fopen(path, "r");
+    viewer = fopen(path, "rb");
 
     if(viewer == NULL)
     {
@@ -271,9 +276,10 @@ static void EyeCapViewer(double Epx, double Epy, double Epz, double Eox, double 
     bytes = fread (&total_entries, sizeof(unsigned long), 1, viewer);
     printf("Units read = %lu. Number of entries = %lu.\n", bytes, total_entries);
 
-    import = (EyeCap *) malloc(sizeof(EyeCap) * total_entries);
+    import = (unsigned char *) malloc(sizeof(EyeCap) * total_entries);
+    bzero(import, sizeof(EyeCap) * total_entries);
     rewind(viewer);
-    fread (import, sizeof(EyeCap), total_entries, viewer);
+    fread (import, sizeof(unsigned char), sizeof(EyeCap) * total_entries, viewer);
 
     fclose(viewer);
 
@@ -288,6 +294,13 @@ static void EyeCapViewer(double Epx, double Epy, double Epz, double Eox, double 
     saveEye.Uy = Euy;
     saveEye.Uz = Euz;
 
+    // for(current = 0; current < total_entries; current++)
+    // {
+    //   bzero(&currEye, sizeof(currEye));
+    //   currEye = *((EyeCap *) (import + (sizeof(EyeCap) * current)));
+    //   printf("EV: %lf %lf %lf %lf %lf %lf %lf %lf %lf.\n", currEye.Ex, currEye.Ey, currEye.Ez, currEye.Ox, currEye.Oy, currEye.Oz, currEye.Ux, currEye.Uy, currEye.Uz);
+    // }
+
     viewState = RUNNING;
     //glutChangeToMenuEntry(1, "Stop Eye Capture", 1);
   }
@@ -295,7 +308,7 @@ static void EyeCapViewer(double Epx, double Epy, double Epz, double Eox, double 
   if(viewState == RUNNING)
   {
     bzero(&currEye, sizeof(currEye));
-    currEye = *(import + (sizeof(EyeCap) * current));
+    currEye = *((EyeCap *) (import + (sizeof(EyeCap) * current)));
 
     Ex = currEye.Ex;
     Ey = currEye.Ey;
@@ -1203,8 +1216,11 @@ void display()
    //  Undo previous transformations
    glLoadIdentity();
 
-   eyeCapture(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
+   // if((capState == RUNNING) || (capState == STOP))
+   //  printf("DP: %lf %lf %lf %lf %lf %lf %lf %lf %lf.\n", Ex, Ey, Ez, Ox, Oy, Oz, Ux, Uy, Uz);
 
+   eyeCapture(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
+   eyeCapViewer(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
    gluLookAt(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
 
    if(boolRefreshViewMenu == true)
@@ -1460,12 +1476,12 @@ void timer(int toggle)
       }
    }
    //  Set timer to go again
-   if (move && toggle>=0)
+   if ((move >= 0) && (toggle >= 0))
    {
-    glutTimerFunc(50,timer,0);
+    glutTimerFunc(50, timer, 0);
   }
 
-    EyeCapViewer(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
+    // eyeCapViewer(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
    //  Tell GLUT it is necessary to redisplay the scene
    glutPostRedisplay();
 }

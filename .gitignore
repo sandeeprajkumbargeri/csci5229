@@ -36,5 +36,8 @@ relative/path/to/dir/anotherfile
 # Ignore .o files
 *.o
 
+#Ignore .cap files
+*.cap
+
 # Unignore Makefiles
 !Makefile
