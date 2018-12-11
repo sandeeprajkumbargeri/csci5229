@@ -127,6 +127,7 @@ int cockpit;
 
 float temp = 0;
 bool boolFPV = false;
+bool boolExit = false;
 int FPVangle = 0;
 
 unsigned int texture[10];
@@ -239,7 +240,7 @@ static void eyeCapture(double Epx, double Epy, double Epz, double Eox, double Eo
   {
     bytes = fwrite(&current, sizeof(current), 1, capture);
     fclose(capture);
-    //printf("STOP request. Bytes: %lu.\n", bytes);
+    printf("STOP request. Bytes: %lu.\n", bytes);
     capState = IDLE;
     glutChangeToMenuEntry(1, "Start Eye Capture", 1);
     refreshViewMenu();
@@ -880,7 +881,7 @@ static void draw_blades(double x, double y, double z, double sx, double sy, doub
   glPopMatrix();
 }
 
-static void draw_ufo(double x,double y,double z,double r)
+static void draw_ufo(double x, double y, double z, double r, double rx, double ry, double rz)
 {
    int th,ph;
    float yellow[] = {1.0,1.0,0.0,1.0};
@@ -888,6 +889,7 @@ static void draw_ufo(double x,double y,double z,double r)
 
    glPushMatrix();
    glTranslated(x,y,z);
+   glRotated(rx, 1, 0, 0);
    glScaled(r,r,r);
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
@@ -910,6 +912,7 @@ static void draw_ufo(double x,double y,double z,double r)
 
    glPushMatrix();
    glTranslated(x, y - 0.3, z);
+   glRotated(-ry, 0, 1, 0);
    glScaled(2*r,r/8,2*r);
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
@@ -931,6 +934,7 @@ static void draw_ufo(double x,double y,double z,double r)
 
    glPushMatrix();
    glTranslated(x, y - 0.3, z);
+   glRotated(ry, 0, 1, 0);
    glScaled(r, r, r);
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
@@ -957,12 +961,9 @@ static void draw_ufo(double x,double y,double z,double r)
    draw_sphere(0, -1.4, -1.8, 0.25, 0.03125, 0.25);
    draw_sphere(0, -1.4, +1.8, 0.25, 0.03125, 0.25);
 
-   glPopMatrix();
+   draw_blades(0, 0, 0, 1.5, 1.5, 1.5, 0, 0, 0);
 
-   glMaterialf(GL_FRONT,GL_SHININESS,shiny);
-   glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
-   glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
-   draw_blades(x, y, z, 1.5*r, 1.5*r, 1.5*r, 0, 0, 0);
+   glPopMatrix();
 }
 
 static void draw_airplane(double x, double y, double z, double dx, double dy, double dz)
@@ -1203,12 +1204,29 @@ static void refreshViewMenu(void)
   glutSetMenu(mainMenu);
 }
 
+static void draw_obj(double tx, double ty, double tz, double sx, double sy, double sz, double rx, double ry, double rz)
+{
+  glPushMatrix();
+
+  glTranslated(tx, ty, tz);
+  glRotated(rx, 1, 0, 0);
+  glRotated(ry, 0, 1, 0);
+  glRotated(rz, 0, 0, 1);
+  glScaled(sx, sy, sz);
+
+  glBindTexture(GL_TEXTURE_2D, tex_flag);
+  glCallList(lm);
+
+  glPopMatrix();
+}
+
 /*
  *  OpenGL (GLUT) calls this routine to display the scene
  */
 void display()
 {
    const double len = 10;  //  Length of axes
+   static unsigned int SpinAngle = 0;
    //  Erase the window and the depth buffer
    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
    //  Enable Z-buffering in OpenGL
@@ -1235,22 +1253,6 @@ void display()
   //  Draw Sky Cube
    if(show_sky) draw_skycube(64);
 
-   //  Perspective - set eye position
-   /*if (mode)
-   {
-      double Ex = -0.5*(dim/4)*Sin(th)*Cos(ph);
-      double Ey = +0.5*(dim/4)        *Sin(ph);
-      double Ez = +0.5*(dim/4)*Cos(th)*Cos(ph);
-      gluLookAt(Ex, Ey, Ez, 0, 0, 0, 0, Cos(ph), 0);
-   }
-
-   //  Orthogonal - set world orientation
-   else
-   {
-      glRotatef(ph, 1, 0, 0);
-      glRotatef(th, 0, 1, 0);
-   }*/
-
    //  Flat or smooth shading
    glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
 
@@ -1258,14 +1260,19 @@ void display()
    if (light)
    {
         //  Translate intensity to color vectors
+        float Emission[]  = {0.0,0.0,0.0,1.0};
         float Ambient[]   = {0.01*ambient ,0.01*ambient ,0.01*ambient ,1.0};
         float Diffuse[]   = {0.01*diffuse ,0.01*diffuse ,0.01*diffuse ,1.0};
         float Specular[]  = {0.01*specular,0.01*specular,0.01*specular,1.0};
+        float white[]     = {1,1,1,1};
+        float Shinyness[] = {16};
         //  Light position
-        float Position[]  = {distance*Cos(zh),ylight, distance*Sin(zh),1.0};
+        float Position[]  = {distance*Cos(zh),ylight, distance*Sin(zh),temp};
         //  Draw light position as ball (still no lighting here)
         glColor3f(1,1,1);
-        draw_ufo(Position[0],Position[1],Position[2] , 1);
+        draw_ufo(Position[0], Position[1], Position[2], 1, SpinAngle, SpinAngle, SpinAngle);
+
+        draw_obj(-Position[0], -Position[1], -Position[2], 10,10,10, 0, SpinAngle, SpinAngle);
         //  OpenGL should normalize normal vectors
         glEnable(GL_NORMALIZE);
         //  Enable lighting
@@ -1282,6 +1289,12 @@ void display()
         glLightfv(GL_LIGHT0,GL_DIFFUSE ,Diffuse);
         glLightfv(GL_LIGHT0,GL_SPECULAR,Specular);
         glLightfv(GL_LIGHT0,GL_POSITION,Position);
+
+        glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,Shinyness);
+        glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,Specular);
+        glMaterialfv(GL_FRONT_AND_BACK,GL_EMISSION,Emission);
+        glMaterialf(GL_FRONT_AND_BACK,GL_SHININESS,32.0f);
+        glMaterialfv(GL_FRONT_AND_BACK,GL_SPECULAR,white);
    }
    else
      glDisable(GL_LIGHTING);
@@ -1294,20 +1307,12 @@ void display()
   if(show_pb_screen)
     draw_playback_screen(-25, -14.7, -35, 4, 0, 0, 0, "textures/playback/playback", 132);
 
-
    draw_mountains(0, -64, -40, 0.1250, 0.0625, 0.0625, 270, 0, 180, zmag + 5);
    draw_mountains(40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 90, zmag - 1);
    draw_mountains(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, zmag + 2);
    draw_mountains(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, zmag - 3);
 
-
-
-  //Draw the onjects
-  //draw_ship(0,-64,-10,4,4,4,0,90,0);
-  //draw_ship(0,-64,+10,8,8,8,0,90,0);
-
-  //draw_airplane(0,0,0,0.5,0.5,0.5);
-  //draw_airplane(-1,3,-1,1,1,1,330);
+   // draw_obj(0,0,0, 10,10,10, 0, SpinAngle, SpinAngle);
 
    //  Draw axes
    glColor3f(1,1,1);
@@ -1351,6 +1356,14 @@ void display()
    //  Render the scene and make it visible
    glFlush();
    glutSwapBuffers();
+
+   SpinAngle += 2;
+
+   if(SpinAngle == 360)
+     SpinAngle = 0;
+
+   if(boolExit == true)
+    exit(0);
 }
 
 /*
@@ -1476,10 +1489,8 @@ void timer(int toggle)
       }
    }
    //  Set timer to go again
-   if ((move >= 0) && (toggle >= 0))
-   {
+   if (move && toggle >= 0)
     glutTimerFunc(50, timer, 0);
-  }
 
     // eyeCapViewer(Ex,Ey,Ez , Ox,Oy,Oz , Ux,Uy,Uz);
    //  Tell GLUT it is necessary to redisplay the scene
@@ -1574,6 +1585,21 @@ void special(int key,int x,int y)
    //glutPostRedisplay();
 }
 
+static void exitProgram(void)
+{
+  if(capState == INIT)
+    capState = IDLE;
+  else if(capState == RUNNING)
+    capState = STOP;
+
+  if(viewState == INIT)
+    viewState = IDLE;
+  else if(viewState == RUNNING)
+    viewState = STOP;
+
+  boolExit = true;
+}
+
 /*
  *  GLUT calls this routine when a key is pressed
  */
@@ -1581,7 +1607,7 @@ void key(unsigned char ch,int x,int y)
 {
     //  Exit on ESC
     if (ch == 27)
-       exit(0);
+       exitProgram();
     //  Reset view angle
     else if (ch == '0')
        th = ph = 0;
@@ -1745,7 +1771,7 @@ void motion(int x,int y)
  */
 // void mouse(int button, int state, int x, int y)
 // {
-//    Point p = Mouse2World(x,y);
+//    Point p = Mouse2World(x,y);cap
 //
 //    //  Add a point
 //    if (button==GLUT_LEFT_BUTTON && state==GLUT_DOWN)
@@ -1799,6 +1825,9 @@ void mainMenuHandler(int value)
         capState = STOP;
     }
   }
+
+  else if(value == 3)
+    exitProgram();
 }
 
 
@@ -1843,7 +1872,7 @@ int main(int argc, char* argv[])
    //  Request double buffered, true color window with Z buffering at 600x600
    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
    glutInitWindowSize(winX, winY);
-   glutCreateWindow("Sandeep Raj Kumbargeri - On the moon");
+   glutCreateWindow("Sandeep Raj Kumbargeri - Moon Moon Moon..");
    //glutFullScreen();
 
    //  Set callbacks
@@ -1878,7 +1907,7 @@ int main(int argc, char* argv[])
 
  tex_flag = LoadTexBMP("textures/us.bmp");
 
- lm = LoadOBJ("lm.obj");
+ lm = LoadOBJ("Z2.obj");
 
 //  Load DEM
 ReadDEM("textures/saddleback.dem");
