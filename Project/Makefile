@@ -1,7 +1,7 @@
 # Example 14
-EXE=main
+EXE=final
 
-# Main target
+# final target
 all: $(EXE)
 
 #  MinGW
@@ -24,7 +24,7 @@ CLEAN=rm -f $(EXE) *.o *.a
 endif
 
 # Dependencies
-main.o: main.c CSCIx229.h
+final.o: final.c CSCIx229.h
 fatal.o: fatal.c CSCIx229.h
 loadtexbmp.o: loadtexbmp.c CSCIx229.h
 print.o: print.c CSCIx229.h
@@ -42,7 +42,7 @@ CSCIx229.a:fatal.o loadtexbmp.o print.o errcheck.o object.o
 	g++ -c $(CFLG) $<
 
 #  Link
-main:main.o CSCIx229.a
+final:final.o CSCIx229.a
 	gcc -O3 -o $@ $^   $(LIBS)
 
 #  Clean
