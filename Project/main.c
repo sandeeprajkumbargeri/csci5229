@@ -889,7 +889,8 @@ static void draw_ufo(double x, double y, double z, double r, double rx, double r
 
    glPushMatrix();
    glTranslated(x,y,z);
-   glRotated(rx, 1, 0, 0);
+   glRotated(180, 1, 0, 0);
+   glRotated(rx, 0, 1, 0);
    glScaled(r,r,r);
    glColor3f(1,1,1);
    glMaterialf(GL_FRONT,GL_SHININESS,shiny);
@@ -912,6 +913,7 @@ static void draw_ufo(double x, double y, double z, double r, double rx, double r
 
    glPushMatrix();
    glTranslated(x, y - 0.3, z);
+   glRotated(15, 1, 0, 0);
    glRotated(-ry, 0, 1, 0);
    glScaled(2*r,r/8,2*r);
    glColor3f(1,1,1);
@@ -934,6 +936,7 @@ static void draw_ufo(double x, double y, double z, double r, double rx, double r
 
    glPushMatrix();
    glTranslated(x, y - 0.3, z);
+   glRotated(15, 1, 0, 0);
    glRotated(ry, 0, 1, 0);
    glScaled(r, r, r);
    glColor3f(1,1,1);
@@ -941,7 +944,7 @@ static void draw_ufo(double x, double y, double z, double r, double rx, double r
    glMaterialfv(GL_FRONT,GL_SPECULAR,yellow);
    glMaterialfv(GL_FRONT,GL_EMISSION,Emission);
 
-   glBindTexture(GL_TEXTURE_2D, tex_ufo[1]);
+   glBindTexture(GL_TEXTURE_2D, texture[9]);
 
    draw_cylinder(-1.25, -0.5, 0, 150, 90, 0.0625, 1, 8);
    draw_cylinder(+1.25, -0.5, 0, 210, 90, 0.0625, 1, 8);
@@ -949,19 +952,17 @@ static void draw_ufo(double x, double y, double z, double r, double rx, double r
    draw_cylinder(0, -0.5, -1.25, 0, 120, 0.0625, 1, 8);
    draw_cylinder(0, -0.5, +1.25, 0, 240, 0.0625, 1, 8);
 
-   glBindTexture(GL_TEXTURE_2D, texture[9]);
    draw_sphere(-1.5, 0, 0, 0.25, 0.25, 0.25);
    draw_sphere(+1.5, 0, 0, 0.25, 0.25, 0.25);
    draw_sphere(0, 0, -1.5, 0.25, 0.25, 0.25);
    draw_sphere(0, 0, +1.5, 0.25, 0.25, 0.25);
 
-   glBindTexture(GL_TEXTURE_2D, texture[9]);
    draw_sphere(-1.8, -1.4, 0, 0.25, 0.03125, 0.25);
    draw_sphere(+1.8, -1.4, 0, 0.25, 0.03125, 0.25);
    draw_sphere(0, -1.4, -1.8, 0.25, 0.03125, 0.25);
    draw_sphere(0, -1.4, +1.8, 0.25, 0.03125, 0.25);
 
-   draw_blades(0, 0, 0, 1.5, 1.5, 1.5, 0, 0, 0);
+   // draw_blades(0, 0, 0, 1.5, 1.5, 1.5, 0, 0, 0);
 
    glPopMatrix();
 }
@@ -1267,12 +1268,12 @@ void display()
         float white[]     = {1,1,1,1};
         float Shinyness[] = {16};
         //  Light position
-        float Position[]  = {distance*Cos(zh),ylight, distance*Sin(zh),temp};
+        float Position[]  = {distance*Cos(zh),ylight, distance*Sin(zh), 1.0};
         //  Draw light position as ball (still no lighting here)
         glColor3f(1,1,1);
         draw_ufo(Position[0], Position[1], Position[2], 1, SpinAngle, SpinAngle, SpinAngle);
 
-        draw_obj(-Position[0], -Position[1], -Position[2], 10,10,10, 0, SpinAngle, SpinAngle);
+        //draw_obj(-Position[0], -Position[1], -Position[2], 10,10,10, 0, SpinAngle, SpinAngle);
         //  OpenGL should normalize normal vectors
         glEnable(GL_NORMALIZE);
         //  Enable lighting
@@ -1312,7 +1313,7 @@ void display()
    draw_mountains(0, -64, 40, 0.1250, 0.0625, 0.0625, 270, 0, 0, zmag + 2);
    draw_mountains(-40, -64, 0, 0.1250, 0.0625, 0.0625, 270, 0, 270, zmag - 3);
 
-   // draw_obj(0,0,0, 10,10,10, 0, SpinAngle, SpinAngle);
+    draw_obj(0,0,0, 10,10,10, 0, SpinAngle, SpinAngle);
 
    //  Draw axes
    glColor3f(1,1,1);
@@ -1504,7 +1505,7 @@ void idle()
 {
    //  Elapsed time in seconds
    double t = glutGet(GLUT_ELAPSED_TIME)/1000.0;
-   zh = fmod(90*t,360.0);
+   zh = fmod(90*t, 360.0);
    //  Tell GLUT it is necessary to redisplay the scene
    glutPostRedisplay();
 }
@@ -1863,62 +1864,55 @@ static void glutMenuSetup(void)
  */
 int main(int argc, char* argv[])
 {
-   show_sky = true;
-   show_cockpit = false;
-   show_pb_screen = true;
+    show_sky = true;
+    show_cockpit = false;
+    show_pb_screen = true;
 
-   //  Initialize GLUT
-   glutInit(&argc, argv);
-   //  Request double buffered, true color window with Z buffering at 600x600
-   glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
-   glutInitWindowSize(winX, winY);
-   glutCreateWindow("Sandeep Raj Kumbargeri - Moon Moon Moon..");
-   //glutFullScreen();
+    //  Initialize GLUT
+    glutInit(&argc, argv);
+    //  Request double buffered, true color window with Z buffering at 600x600
+    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
+    glutInitWindowSize(winX, winY);
+    glutCreateWindow("Sandeep Raj Kumbargeri - Moon Moon Moon..");
+    //glutFullScreen();
 
-   //  Set callbacks
-   glutDisplayFunc(display);
-   glutReshapeFunc(reshape);
-   glutSpecialFunc(special);
-   glutKeyboardFunc(key);
-   //glutMouseFunc(mouse);
-   glutPassiveMotionFunc(motion);
-   glutMenuSetup();
+    //  Set callbacks
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutSpecialFunc(special);
+    glutKeyboardFunc(key);
+    //glutMouseFunc(mouse);
+    glutPassiveMotionFunc(motion);
+    glutMenuSetup();
 
-   //  Load textures
-   texture[0] = LoadTexBMP("textures/brick.bmp");
-   texture[1] = LoadTexBMP("textures/pattern.bmp");
-   texture[2] = LoadTexBMP("textures/sky.bmp");
-   texture[3] = LoadTexBMP("textures/smoke.bmp");
-   texture[4] = LoadTexBMP("textures/squares.bmp");
-   texture[5] = LoadTexBMP("textures/stars.bmp");
-   texture[6] = LoadTexBMP("textures/water.bmp");
-   texture[7] = LoadTexBMP("textures/wood.bmp");
+    //  Load textures
+    texture[1] = LoadTexBMP("textures/pattern.bmp");
+    texture[4] = LoadTexBMP("textures/squares.bmp");
+    texture[8] = LoadTexBMP("textures/rockies.bmp");
+    texture[9] = LoadTexBMP("textures/metal.bmp");
 
-   texture[8] = LoadTexBMP("textures/rockies.bmp");
-   texture[9] = LoadTexBMP("textures/metal.bmp");
+    //  Load skybox texture
+    tex_skycube[0] = LoadTexBMP("textures/skycube_sides.bmp");
+    tex_skycube[1] = LoadTexBMP("textures/skycube_topbottom.bmp");
 
-   //  Load skybox texture
- tex_skycube[0] = LoadTexBMP("textures/skycube_sides.bmp");
- tex_skycube[1] = LoadTexBMP("textures/skycube_topbottom.bmp");
+    cockpit = LoadTexBMP("textures/cockpit.bmp");
+    tex_ufo[0] = LoadTexBMP("textures/ufo1.bmp");
+    tex_ufo[1] = LoadTexBMP("textures/ufo2.bmp");
 
- cockpit = LoadTexBMP("textures/cockpit.bmp");
- tex_ufo[0] = LoadTexBMP("textures/ufo1.bmp");
- tex_ufo[1] = LoadTexBMP("textures/ufo2.bmp");
+    tex_flag = LoadTexBMP("textures/us.bmp");
 
- tex_flag = LoadTexBMP("textures/us.bmp");
+    lm = LoadOBJ("obj/astronaut.obj");
 
- lm = LoadOBJ("Z2.obj");
+    //  Load DEM
+    ReadDEM("textures/saddleback.dem");
 
-//  Load DEM
-ReadDEM("textures/saddleback.dem");
+    timer(1);
 
-   timer(1);
+    //texture[2] = LoadTexBMP("water.bmp");
 
-   //texture[2] = LoadTexBMP("water.bmp");
+    //glutIdleFunc(idle);
 
-   //glutIdleFunc(idle);
-
-   //  Pass control to GLUT so it can interact with the user
-   glutMainLoop();
-   return 0;
+    //  Pass control to GLUT so it can interact with the user
+    glutMainLoop();
+    return 0;
 }
