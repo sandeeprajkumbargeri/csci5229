@@ -401,13 +401,13 @@ void draw_flag(double tx, double ty, double tz, double sx, double sy, double sz,
 	glColor3f(1, 1, 1);
 
   glBindTexture(GL_TEXTURE_2D, tex_flag);
+  glShadeModel(GL_SMOOTH);
 
   for (x=0; x<63; x++)
   {
       for (y=0; y<63; y++)
       {
           glBegin(GL_QUADS);
-          glShadeModel(GL_SMOOTH);
           GL_NORMAL(flag[x][y][0], flag[x][y][1], flag[x][y][2], flag[x+1][y][0], flag[x+1][y][1], flag[x+1][y][2], flag[x][y+1][0], flag[x][y+1][1], flag[x][y+1][2]);
           glTexCoord2f(x/63.0, y/63.0);     glVertex3f(flag[x][y][0], flag[x][y][1], flag[x][y][2]);
           glTexCoord2f(x/63.0, (y+1)/63.0);   glVertex3f(flag[x][y+1][0], flag[x][y+1][1], flag[x][y+1][2]);
@@ -502,13 +502,15 @@ void draw_mountains(double tx, double ty, double tz, double sx, double sy, doubl
 
   glColor3f(1,1,1);
   glBindTexture(GL_TEXTURE_2D,texture[2]);
+  glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
+
   for (i=0;i<64;i++)
      for (j=0;j<64;j++)
      {
         float x=16*i-512;
         float y=16*j-512;
         glBegin(GL_QUADS);
-        glShadeModel(smooth ? GL_SMOOTH : GL_FLAT);
+
         GL_NORMAL(x+ 0,y+ 0,zmag_local*(z[i+0][j+0]-z0), x+16,y+ 0,zmag_local*(z[i+1][j+0]-z0), x+ 0,y+16,zmag_local*(z[i+0][j+1]-z0));
         glTexCoord2f((i+0)/64.,(j+0)/64.); glVertex3d(x+ 0,y+ 0,zmag_local*(z[i+0][j+0]-z0));
         glTexCoord2f((i+1)/64.,(j+0)/64.); glVertex3d(x+16,y+ 0,zmag_local*(z[i+1][j+0]-z0));
@@ -1363,7 +1365,7 @@ void display()
    if(SpinAngle == 360)
      SpinAngle = 0;
 
-  //ErrCheck("Main");
+  ErrCheck("Main");
 
    if(boolExit == true)
     exit(0);
@@ -1805,7 +1807,7 @@ void viewMenuHandler(int value)
 
   if(value > 1)
   {
-    printf("Hello\n");
+    //printf("Hello\n");
     viewFileIndex = value;
 
     if((viewState == IDLE) && (capState == IDLE))
