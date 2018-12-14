@@ -77,5 +77,5 @@ Use arrow keys to change viewing angles
 - Left Click - For Yes/No at Collision-Detection/Mission-Accomplished prompts
 
 #### P.S
-- The ErrCheck throws an error in draw_playback_screen function. This could probably be because the textures are being loaded in the middle of the program. That's my best guess as I happened to use gdb to find out that this is being cause by the LoadTexBMP for no real reason.
+- The ErrCheck throws an error in draw_playback_screen function. This could probably be because the textures are being loaded in the middle of the program. That's my best guess as I happened to use gdb to find out that this is being cause by the LoadTexBMP for no real reason. -> Reason: 1. GL_SMOOTH used in between glBegin(GL_QUAD) and glEnd(GL_QUAD) while defining surfaces for flag and some other surface. 2. astronauth.mtl shininess was 256.. made it 32.
 - I used few large textures as I use a 4K screen and smaller textures render very poorly when zoomed in. I have the smaller textures with me and am more than happy to replace the large textures.
